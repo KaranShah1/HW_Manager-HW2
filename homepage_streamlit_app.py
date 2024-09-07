@@ -17,10 +17,10 @@ with st.sidebar:
 # Load the appropriate page based on the user's selection
 if selected_page == "First Lab":
     st.title("HW - 1 ")
-    # Execute the Lab1.py code
-    exec(open("Lab1.py").read())  # This will run the content of Lab1.py
+    # Execute the hw1.py code
+    exec(open("hw1.py").read())  # This will run the content of hw1.py
 
 elif selected_page == "Second Lab":
     st.title("HW - 2")
-    # Execute the Lab2.py code
-    exec(open("Lab2.py").read())  # This will run the content of Lab2.py
+    # Execute the hw2.py code
+    exec(open("hw2.py").read())  # This will run the content of hw2.py
