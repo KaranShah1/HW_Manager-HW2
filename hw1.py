@@ -3,7 +3,7 @@ from openai import OpenAI, OpenAIError
 import fitz  # PyMuPDF for reading PDFs
 
 # Show title and description.
-st.title("HW-01-Karan Shah📄 Document Question Answering")
+st.title("Karan Shah📄 Document Question Answering")
 st.title("📄 My Document Question Answering")
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
