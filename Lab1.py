@@ -1,71 +1,96 @@
 import streamlit as st
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
+import fitz  # PyMuPDF for reading PDFs
 
 # Show title and description.
-st.title("LAB-01-Karan Shah📄 Document Question Answering")
+st.title("HW-01-Karan Shah📄 Document Question Answering")
+st.title("📄 My Document Question Answering")
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
     "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys)."
 )
 
-# Fetch the OpenAI API key from Streamlit secrets.
-openai_api_key = st.secrets["somesection"]
+# Function to validate the API key
+def validate_api_key(api_key):
+    try:
+        client = OpenAI(api_key=api_key)
+        # Make a simple request to test the key
+        client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": "Hello"}])
+        return True
+    except OpenAIError:
+        return False
 
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝")
+# Ask user for their OpenAI API key via st.text_input.
+openai_api_key = st.text_input("OpenAI API Key", type="password")
+
+# Validate API key as soon as it is entered
+if openai_api_key:
+    if validate_api_key(openai_api_key):
+        st.success("API key is valid!")
+        st.session_state.api_key_valid = True
+    else:
+        st.error("Invalid API key. Please enter a valid OpenAI API key.")
+        st.session_state.api_key_valid = False
 else:
-    # Create an OpenAI client.
+    st.session_state.api_key_valid = False
+
+# Function to read PDF using PyMuPDF
+def read_pdf(file):
+    doc = fitz.open(stream=file.read(), filetype="pdf")
+    text = ""
+    for page in doc:
+        text += page.get_text()
+    return text
+
+# Create an OpenAI client if the API key is valid
+if st.session_state.api_key_valid:
     client = OpenAI(api_key=openai_api_key)
-
-    # Sidebar options
-    st.sidebar.header("Summary Options")
-    summary_option = st.sidebar.selectbox(
-        "Choose a summary type:",
-        ["Summarize in 100 words", "Summarize in 2 connecting paragraphs", "Summarize in 5 bullet points"]
-    )
-
-    advanced_model = st.sidebar.checkbox("Use Advanced Model (GPT-4o)")
 
     # Let the user upload a file via st.file_uploader.
     uploaded_file = st.file_uploader(
-        "Upload a document (.txt or .md)", type=("txt", "md")
+        "Upload a document (.pdf or .txt)", type=("pdf", "txt")
     )
 
-    # Ask the user for a question via st.text_area.
-    question = st.text_area(
-        "Now ask a question about the document!",
-        placeholder="Can you give me a short summary?",
-        disabled=not uploaded_file,
-    )
+    if uploaded_file:
+        file_extension = uploaded_file.name.split('.')[-1]
+        if file_extension == 'txt':
+            document = uploaded_file.read().decode()
+        elif file_extension == 'pdf':
+            document = read_pdf(uploaded_file)
+        else:
+            st.error("Unsupported file type.")
+            document = None
 
-    if uploaded_file and question:
-        # Process the uploaded file and question.
-        document = uploaded_file.read().decode()
-        
-        # Set the model based on the checkbox
-        model = "gpt-4o" if advanced_model else "gpt-4o-mini"
-
-        # Create messages for the API request
-        if summary_option == "Summarize in 100 words":
-            prompt = f"Summarize the following document in 100 words: {document}"
-        elif summary_option == "Summarize in 2 connecting paragraphs":
-            prompt = f"Summarize the following document in 2 connecting paragraphs: {document}"
-        elif summary_option == "Summarize in 5 bullet points":
-            prompt = f"Summarize the following document in 5 bullet points: {document}"
-        
-        messages = [
-            {
-                "role": "user",
-                "content": f"{prompt} \n\n---\n\n {question}",
-            }
-        ]
-
-        # Generate an answer using the OpenAI API.
-        stream = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            stream=True,
+        # Ask the user for a question via st.text_area.
+        question = st.text_area(
+            "Now ask a question about the document!",
+            placeholder="Can you give me a short summary?",
+            disabled=not uploaded_file,
         )
 
-        # Stream the response to the app using st.write_stream.
-        st.write_stream(stream)
+        if uploaded_file and question and document:
+            # Process the uploaded file and question.
+            messages = [
+                {
+                    "role": "user",
+                    "content": f"Here's a document: {document} \n\n---\n\n {question}",
+                }
+            ]
+
+            # Generate an answer using the OpenAI API.
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=messages
+                )
+                st.write(response.choices[0].message.content)
+            except OpenAIError as e:
+                st.error(f"An error occurred while generating the response: {e}")
+
+    # If the file is removed, clear the data
+    if not uploaded_file:
+        if 'document' in st.session_state:
+            del st.session_state['document']
+        st.info("Please upload a file to continue.")
+else:
+    st.info("Please add your OpenAI API key to continue.", icon="🗝")
