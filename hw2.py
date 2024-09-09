@@ -1,5 +1,6 @@
 import streamlit as st
 from openai import OpenAI
+import fitz  # PyMuPDF for handling PDF files
 import requests
 
 # Show title and description.
@@ -19,7 +20,7 @@ else:
     # Sidebar options for selecting models and summaries
     st.sidebar.header("Summary Options")
     
-    # Choose between GPT-4, GPT-4-mini, or Claude 3 Opus
+    # Choose between GPT-4o, GPT-4o-mini, or Claude 3 Opus
     model_option = st.sidebar.selectbox(
         "Choose the model:",
         ["GPT-4o", "GPT-4o-mini", "Claude 3 Opus"]
@@ -33,7 +34,7 @@ else:
 
     # Let the user upload a file via st.file_uploader.
     uploaded_file = st.file_uploader(
-        "Upload a document (.txt or .md)", type=("txt", "md")
+        "Upload a document (.txt, .md, or .pdf)", type=("txt", "md", "pdf")
     )
 
     # Ask the user for a question via st.text_area.
@@ -45,7 +46,16 @@ else:
 
     if uploaded_file and question:
         # Process the uploaded file and question.
-        document = uploaded_file.read().decode()
+        if uploaded_file.type == "application/pdf":
+            # If it's a PDF, extract the text using fitz
+            with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
+                document = ""
+                for page in doc:
+                    document += page.get_text()
+
+        else:
+            # Handle .txt or .md files
+            document = uploaded_file.read().decode()
 
         # Create the summary prompt
         if summary_option == "Summarize in 100 words":
