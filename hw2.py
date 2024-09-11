@@ -73,10 +73,10 @@ else:
     # Sidebar options for selecting models and summaries
     st.sidebar.header("Summary Options")
 
-    # Choose between GPT-4o-mini, Claude 3 Opus, Gemini, or Cohere
+    # Choose between GPT-4o-mini, Gemini or Cohere
     model_option = st.sidebar.selectbox(
         "Choose the model:",
-        ["GPT-4o-mini", "Claude 3 Opus", "Gemini", "Cohere"]
+        ["GPT-4o-mini", "Gemini", "Cohere"]
     )
 
     # Choose summary option
@@ -140,34 +140,34 @@ else:
                 else:
                     st.error("Please add your OpenAI API key to use GPT-4o-mini.")
 
-            # If Claude 3 Opus is selected
-            elif model_option == "Claude 3 Opus":
-                if claude_3_opus_key:
-                    headers = {
-                        "Authorization": f"Bearer {claude_3_opus_key}",
-                        "Content-Type": "application/json"
-                    }
-                    payload = {
-                        "model": "claude-v1",  # Assuming model name for Claude; adjust if needed
-                        "messages": [
-                            {"role": "user", "content": f"{prompt} \n\n---\n\n {question}"}
-                        ]
-                    }
+            # # If Claude 3 Opus is selected
+            # elif model_option == "Claude 3 Opus":
+            #     if claude_3_opus_key:
+            #         headers = {
+            #             "Authorization": f"Bearer {claude_3_opus_key}",
+            #             "Content-Type": "application/json"
+            #         }
+            #         payload = {
+            #             "model": "claude-v1",  # Assuming model name for Claude; adjust if needed
+            #             "messages": [
+            #                 {"role": "user", "content": f"{prompt} \n\n---\n\n {question}"}
+            #             ]
+            #         }
 
-                    # Send request to Claude 3 Opus API
-                    response = requests.post(
-                        "https://api.anthropic.com/v1/completions",  # Assuming endpoint; adjust if needed
-                        headers=headers,
-                        json=payload
-                    )
+            #         # Send request to Claude 3 Opus API
+            #         response = requests.post(
+            #             "https://api.anthropic.com/v1/completions",  # Assuming endpoint; adjust if needed
+            #             headers=headers,
+            #             json=payload
+            #         )
 
-                    if response.status_code == 200:
-                        # Display response content
-                        st.write(response.json().get('completion', 'No completion found'))
-                    else:
-                        st.error(f"Failed to get response from Claude 3 Opus: {response.status_code}")
-                else:
-                    st.error("Please add your Claude 3 Opus API key to use Claude 3 Opus.")
+            #         if response.status_code == 200:
+            #             # Display response content
+            #             st.write(response.json().get('completion', 'No completion found'))
+            #         else:
+            #             st.error(f"Failed to get response from Claude 3 Opus: {response.status_code}")
+            #     else:
+            #         st.error("Please add your Claude 3 Opus API key to use Claude 3 Opus.")
 
             # If Gemini is selected
             elif model_option == "Gemini":
