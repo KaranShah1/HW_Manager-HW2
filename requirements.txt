@@ -3,3 +3,7 @@ openai
 pymupdf
 streamlit-option-menu
 googletrans
+google-generativeai
+cohere
+python-dotenv
+bs4
