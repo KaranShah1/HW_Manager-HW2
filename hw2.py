@@ -54,18 +54,18 @@ def google_dem(question_to_ask, api_key):
 # Show title and description
 st.title("Karan Shah📄 Document Question Answering")
 st.write(
-    "Enter a URL below and ask a question about it – GPT, Claude 3 Opus, Gemini, or Cohere will answer! "
-    "To use this app, you need to provide an API key for OpenAI, Claude 3 Opus, Gemini, or Cohere."
+    "Enter a URL below and ask a question about it – GPT, Gemini, or Cohere will answer! "
+    "To use this app, you need to provide an API key for OpenAI, Gemini, or Cohere."
 )
 
 # Fetch the API keys from Streamlit secrets
 openai_api_key = st.secrets.get("openai")
-claude_3_opus_key = st.secrets.get("claude_3_opus")
+#claude_3_opus_key = st.secrets.get("claude_3_opus")
 gemini_api_key = st.secrets.get("gemini")
 cohere_api_key = st.secrets.get("cohere")
 
 if not (openai_api_key or claude_3_opus_key or gemini_api_key or cohere_api_key):
-    st.info("Please add your API keys for OpenAI, Claude 3 Opus, Gemini, or Cohere to continue.", icon="🗝")
+    st.info("Please add your API keys for OpenAI, Gemini, or Cohere to continue.", icon="🗝")
 else:
     # Input URL from the user
     url = st.text_input("Enter a URL to summarize and ask questions about:")
