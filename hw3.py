@@ -25,7 +25,7 @@ url2 = st.sidebar.text_input("Enter URL 2 (optional):")
 st.sidebar.title("Choose LLM Vendor")
 llm_vendor = st.sidebar.selectbox(
     "Choose LLM:",
-    ("OpenAI GPT-4", "GPT-4o-mini", "Gemini", "Cohere Command")
+    ("OpenAI GPT-4", "GPT-4o-mini", "Gemini", "Cohere")
 )
 
 # Sidebar for conversation memory selection
@@ -43,7 +43,7 @@ url2_content = fetch_url_content(url2)
 def call_llm(question, llm_vendor, context):
     # Use OpenAI API for GPT models
     if llm_vendor == "OpenAI GPT-4":
-        openai.api_key = st.secrets["openai_api_key"]  # Add OpenAI API Key in Streamlit secrets
+        openai.api_key = st.secrets["openai"]  # Add OpenAI API Key in Streamlit secrets
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[{"role": "system", "content": context}, {"role": "user", "content": question}],
@@ -65,7 +65,7 @@ def call_llm(question, llm_vendor, context):
 
     elif llm_vendor == "Cohere Command":
         # Call to Cohere API
-        cohere_api_key = st.secrets["cohere_api_key"]
+        cohere_api_key = st.secrets["cohere"]
         headers = {
             "Authorization": f"Bearer {cohere_api_key}",
             "Content-Type": "application/json"
