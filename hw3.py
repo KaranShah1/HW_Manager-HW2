@@ -60,7 +60,7 @@ else:
             # Generate an answer from OpenAI in simple terms
             messages = st.session_state.chat_history
             stream = client.chat.completions.create(
-                model="gpt-4-o",
+                model="gpt-4o-mini",
                 messages=messages,
                 stream=True,
             )
