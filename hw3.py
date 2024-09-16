@@ -1,80 +1,102 @@
 import streamlit as st
-from openai import OpenAI
+import requests
+from bs4 import BeautifulSoup
+import openai
 
-# Title and description
-st.title("LAB-03-Karan Shah📄 Document question answering and Chatbot")
-st.write("Interact with the chatbot. Ask a question and get an easy-to-understand answer! Add your OpenAI API key to use the app.")
+# Function to fetch content from a URL
+def fetch_url_content(url):
+    if not url:
+        return ""
+    
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, "html.parser")
+        return soup.get_text()
+    except Exception as e:
+        st.error(f"Error fetching URL: {e}")
+        return ""
 
-# Fetch the OpenAI API key from Streamlit secrets
-openai_api_key = st.secrets["openai"]
+# Sidebar for URL inputs
+st.sidebar.title("User Input")
+url1 = st.sidebar.text_input("Enter URL 1:")
+url2 = st.sidebar.text_input("Enter URL 2 (optional):")
 
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝")
-else:
-    # Create an OpenAI client
-    client = OpenAI(api_key=openai_api_key)
+# Sidebar for LLM selection
+st.sidebar.title("Choose LLM Vendor")
+llm_vendor = st.sidebar.selectbox(
+    "Choose LLM:",
+    ("OpenAI GPT-4", "GPT-4o-mini", "Gemini", "Cohere Command")
+)
 
-    # Set up session state to store chat history and if more info is needed
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = [
-            {"role": "assistant", "content": "Hi! How can I help you today?"}
-        ]
+# Sidebar for conversation memory selection
+st.sidebar.title("Conversation Memory Type")
+memory_type = st.sidebar.selectbox(
+    "Choose Memory Type:",
+    ("Buffer of 5 questions", "Conversation summary", "Buffer of 5,000 tokens")
+)
 
-    if "awaiting_more_info" not in st.session_state:
-        st.session_state.awaiting_more_info = False
+# Fetch content from URLs
+url1_content = fetch_url_content(url1)
+url2_content = fetch_url_content(url2)
 
-    def manage_conversation_buffer():
-        """Ensure the conversation buffer does not exceed 2 user messages and 2 responses."""
-        conversation_buffer_size = 4  # 2 user messages + 2 assistant responses
-        if len(st.session_state.chat_history) > conversation_buffer_size:
-            st.session_state.chat_history = st.session_state.chat_history[-conversation_buffer_size:]
+# Define a function to call the selected LLM
+def call_llm(question, llm_vendor, context):
+    # Use OpenAI API for GPT models
+    if llm_vendor == "OpenAI GPT-4":
+        openai.api_key = st.secrets["openai_api_key"]  # Add OpenAI API Key in Streamlit secrets
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "system", "content": context}, {"role": "user", "content": question}],
+            stream=True
+        )
+        return response
 
-    # Display the chatbot conversation
-    st.write("## Chatbot Interaction")
-    for msg in st.session_state.chat_history:
-        chat_msg = st.chat_message(msg["role"])
-        chat_msg.write(msg["content"])
+    elif llm_vendor == "GPT-4o-mini":
+        # Call to GPT-4o-mini API (pseudo-code, implement as per your API documentation)
+        # You'll need the API key and endpoint for GPT-4o-mini
+        response = "This is a placeholder response from GPT-4o-mini"
+        return response
 
-    # Get user input
-    if prompt := st.chat_input("Ask the chatbot a question:"):
-        if st.session_state.awaiting_more_info:
-            # Handle yes or no response for "Do you want more info?"
-            if prompt.lower() in ["yes", "y"]:
-                # Provide more information in simple terms
-                more_info = "Here is more information: Think of it this way... (simple explanation)."
-                st.session_state.chat_history.append({"role": "user", "content": "Yes, I want more info."})
-                st.session_state.chat_history.append({"role": "assistant", "content": more_info})
+    elif llm_vendor == "Gemini":
+        # Call to Gemini API (pseudo-code, implement as per your API documentation)
+        # Implement your Gemini API key and logic here
+        response = "This is a placeholder response from Gemini"
+        return response
 
-                # Ask again if more info is needed
-                st.session_state.chat_history.append({"role": "assistant", "content": "Do you want more info?"})
+    elif llm_vendor == "Cohere Command":
+        # Call to Cohere API
+        cohere_api_key = st.secrets["cohere_api_key"]
+        headers = {
+            "Authorization": f"Bearer {cohere_api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "prompt": context + "\nUser question: " + question,
+            "model": "command-xlarge-nightly",
+            "max_tokens": 300,
+            "temperature": 0.75
+        }
+        response = requests.post(
+            "https://api.cohere.ai/generate",
+            json=payload,
+            headers=headers
+        ).json()
+        return response['generations'][0]['text']
 
-            else:
-                # User said 'no', return to normal conversation
-                st.session_state.chat_history.append({"role": "user", "content": "No, I don't need more info."})
-                st.session_state.chat_history.append({"role": "assistant", "content": "What else can I help you with?"})
-                st.session_state.awaiting_more_info = False  # Resetting after response
-        else:
-            # Append user question to chat history
-            st.session_state.chat_history.append({"role": "user", "content": prompt})
+    else:
+        return "Invalid LLM Vendor"
 
-            # Generate an answer from OpenAI in simple terms
-            messages = st.session_state.chat_history
-            stream = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                stream=True,
-            )
+# Combine URL content and conversation history as context
+context = f"URL 1 content: {url1_content}\n\nURL 2 content: {url2_content}"
 
-            # Stream the assistant's response
-            with st.chat_message("assistant"):
-                response = st.write_stream(stream)
+# Example question from user
+question = st.text_input("Ask your question:")
+if question:
+    response = call_llm(question, llm_vendor, context)
 
-            # Append the response to the chat history
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-            # Ask if the user wants more info
-            st.session_state.chat_history.append({"role": "assistant", "content": "Do you want more info?"})
-            st.session_state.awaiting_more_info = True
-
-        # Ensure conversation buffer size is maintained
-        manage_conversation_buffer()
+    # Stream the response (for OpenAI models)
+    if llm_vendor == "OpenAI GPT-4":
+        for message in response:
+            st.write(message["choices"][0]["delta"].get("content", ""), end="")
+    else:
+        st.write(response)
