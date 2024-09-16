@@ -8,7 +8,7 @@ st.set_page_config(page_title="Multi-Page App", layout="wide")
 with st.sidebar:
     selected_page = option_menu(
         "HW Manager",
-        ["First Homework", "Second Homework"],
+        ["First Homework", "Second Homework", "Third Homework"],
         icons=['book', 'beaker'],
         menu_icon="cast", 
         default_index=0,
@@ -29,4 +29,3 @@ elif selected_page == "Third Homework":
     st.title("HW - 3")
     # Execute the hw3.py code
     exec(open("hw3.py").read())  # This will run the content of hw3.py
-
