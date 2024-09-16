@@ -24,3 +24,9 @@ elif selected_page == "Second Homework":
     st.title("HW - 2")
     # Execute the hw2.py code
     exec(open("hw2.py").read())  # This will run the content of hw2.py
+
+elif selected_page == "Third Homework":
+    st.title("HW - 3")
+    # Execute the hw3.py code
+    exec(open("hw3.py").read())  # This will run the content of hw3.py
+
