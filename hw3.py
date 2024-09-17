@@ -1,102 +1,158 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
-import openai
+from openai import OpenAI
+import cohere
 
-# Function to fetch content from a URL
-def fetch_url_content(url):
-    if not url:
-        return ""
-    
+# Show title and description
+st.title("LAB-03-Karan Shah📄 Document Question Answering and Chatbot")
+st.write(
+    "Upload a document below and ask a question about it – GPT will answer! "
+    "You can also interact with the chatbot. "
+    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+)
+
+# Fetch the API keys from Streamlit secrets
+openai_api_key = st.secrets.get("openai")
+gemini_api_key = st.secrets.get("gemini")
+cohere_api_key = st.secrets.get("cohere")
+
+if not openai_api_key:
+    st.info("Please add your OpenAI API key to continue.", icon="🗝")
+else:
+    # Create an OpenAI client
+    client = OpenAI(api_key=openai_api_key)
+
+    # Let the user upload a file via st.file_uploader.
+    uploaded_file = st.file_uploader("Upload a document (.txt or .pdf)", type=("txt", "pdf"))
+
+    # Sidebar options for summarizing 
+    st.sidebar.title("Options")
+
+    # Model selection
+    model_option = st.sidebar.selectbox("Choose the model:", ["GPT-4o-mini", "Gemini", "Cohere"])
+
+    # Summary options
+    summary_options = st.sidebar.radio(
+        "Select a format for summarizing the document:",
+        (
+            "Summarize the document in 100 words",
+            "Summarize the document in 2 connecting paragraphs",
+            "Summarize the document in 5 bullet points"
+        ),
+    )
+
+    if uploaded_file:
+        # Process the uploaded file, handling potential decoding issues
+        try:
+            document = uploaded_file.read().decode('utf-8')
+        except UnicodeDecodeError:
+            # If utf-8 decoding fails, use a more lenient approach
+            document = uploaded_file.read().decode('utf-8', errors='replace')
+
+        # Instruction based on user selection on the sidebar menu
+        instruction = f"Summarize the document in {summary_options.lower()}."
+
+        # Prepare the messages for the LLM
+        messages = [
+            {
+                "role": "user",
+                "content": f"Here's a document: {document} \n\n---\n\n {instruction}",
+            }
+        ]
+
+        # Generate the summary using the selected model (OpenAI, Gemini, or Cohere)
+        if model_option == "GPT-4o-mini":
+            stream = client.chat_completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                stream=True,
+            )
+
+            # Display the streamed output
+            for chunk in stream:
+                st.write(chunk.choices[0].message['content'])
+
+        elif model_option == "Gemini":
+            if gemini_api_key:
+                response_text = google_dem(prompt=document, api_key=gemini_api_key)
+                st.write(response_text)
+            else:
+                st.error("Please add your Gemini API key to use Gemini.")
+
+        elif model_option == "Cohere":
+            if cohere_api_key:
+                response_text = generate_text(prompt=document, api_key=cohere_api_key)
+                st.write(response_text)
+            else:
+                st.error("Please add your Cohere API key to use Cohere.")
+
+    # Set up session state to hold chatbot messages with a buffer limit
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = [{"role": "assistant", "content": "How can I help you?"}]
+
+# Function to read content from a URL
+def read_url_content(url):
     try:
         response = requests.get(url)
-        soup = BeautifulSoup(response.content, "html.parser")
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        soup = BeautifulSoup(response.content, 'html.parser')
         return soup.get_text()
-    except Exception as e:
-        st.error(f"Error fetching URL: {e}")
-        return ""
+    except requests.RequestException as e:
+        st.error(f"Error reading {url}: {e}")
+        return None
 
-# Sidebar for URL inputs
-st.sidebar.title("User Input")
-url1 = st.sidebar.text_input("Enter URL 1:")
-url2 = st.sidebar.text_input("Enter URL 2 (optional):")
+# Define the generate_text function using Cohere
+def generate_text(prompt, api_key):
+    co = cohere.Client(api_key)
+    response = co.generate(
+        model="command-r",  # Use the correct model name
+        prompt=prompt,
+        temperature=0.5,  # Adjust temperature as needed
+        max_tokens=500
+    )
+    return response.generations[0].text
 
-# Sidebar for LLM selection
-st.sidebar.title("Choose LLM Vendor")
-llm_vendor = st.sidebar.selectbox(
-    "Choose LLM:",
-    ("OpenAI GPT-4", "GPT-4o-mini", "Gemini", "Cohere")
-)
+def google_dem(prompt, api_key):
+    # This function assumes Gemini API has a similar call pattern
+    # Adjust this according to the actual SDK or API specifications for Gemini
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-pro')
 
-# Sidebar for conversation memory selection
-st.sidebar.title("Conversation Memory Type")
-memory_type = st.sidebar.selectbox(
-    "Choose Memory Type:",
-    ("Buffer of 5 questions", "Conversation summary", "Buffer of 5,000 tokens")
-)
+    messages = [{"role": "user", "parts": prompt}]
+    response = model.generate_content(messages)
+    return response.text
 
-# Fetch content from URLs
-url1_content = fetch_url_content(url1)
-url2_content = fetch_url_content(url2)
+# Chatbot section
+st.write("## Chatbot Interaction")
+for msg in st.session_state.chat_history:
+    st.chat_message(msg["role"]).write(msg["content"])
 
-# Define a function to call the selected LLM
-def call_llm(question, llm_vendor, context):
-    # Use OpenAI API for GPT models
-    if llm_vendor == "OpenAI GPT-4":
-        openai.api_key = st.secrets["openai"]  # Add OpenAI API Key in Streamlit secrets
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "system", "content": context}, {"role": "user", "content": question}],
-            stream=True
+# Get user input for the chatbot
+if prompt := st.chat_input("Ask the chatbot a question or interact:"):
+    st.session_state.chat_history.append({"role": "user", "content": prompt})
+    st.chat_message("user").write(prompt)
+
+    # Generate response
+    if model_option == "GPT-4o-mini" and openai_api_key:
+        stream = client.chat_completions.create(
+            model="gpt-4o-mini",
+            messages=st.session_state.chat_history,
+            stream=True,
         )
-        return response
+        for chunk in stream:
+            response_text = chunk.choices[0].message['content']
+            st.session_state.chat_history.append({"role": "assistant", "content": response_text})
+            st.chat_message("assistant").write(response_text)
 
-    elif llm_vendor == "GPT-4o-mini":
-        # Call to GPT-4o-mini API (pseudo-code, implement as per your API documentation)
-        # You'll need the API key and endpoint for GPT-4o-mini
-        response = "This is a placeholder response from GPT-4o-mini"
-        return response
+    elif model_option == "Gemini" and gemini_api_key:
+        response_text = google_dem(prompt, gemini_api_key)
+        st.session_state.chat_history.append({"role": "assistant", "content": response_text})
+        st.chat_message("assistant").write(response_text)
 
-    elif llm_vendor == "Gemini":
-        # Call to Gemini API (pseudo-code, implement as per your API documentation)
-        # Implement your Gemini API key and logic here
-        response = "This is a placeholder response from Gemini"
-        return response
-
-    elif llm_vendor == "Cohere Command":
-        # Call to Cohere API
-        cohere_api_key = st.secrets["cohere"]
-        headers = {
-            "Authorization": f"Bearer {cohere_api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "prompt": context + "\nUser question: " + question,
-            "model": "command-xlarge-nightly",
-            "max_tokens": 300,
-            "temperature": 0.75
-        }
-        response = requests.post(
-            "https://api.cohere.ai/generate",
-            json=payload,
-            headers=headers
-        ).json()
-        return response['generations'][0]['text']
+    elif model_option == "Cohere" and cohere_api_key:
+        response_text = generate_text(prompt, cohere_api_key)
+        st.session_state.chat_history.append({"role": "assistant", "content": response_text})
+        st.chat_message("assistant").write(response_text)
 
     else:
-        return "Invalid LLM Vendor"
-
-# Combine URL content and conversation history as context
-context = f"URL 1 content: {url1_content}\n\nURL 2 content: {url2_content}"
-
-# Example question from user
-question = st.text_input("Ask your question:")
-if question:
-    response = call_llm(question, llm_vendor, context)
-
-    # Stream the response (for OpenAI models)
-    if llm_vendor == "OpenAI GPT-4":
-        for message in response:
-            st.write(message["choices"][0]["delta"].get("content", ""), end="")
-    else:
-        st.write(response)
+        st.error("Please provide the correct API key to use the selected model.")
