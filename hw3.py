@@ -27,7 +27,7 @@ else:
     url2 = st.sidebar.text_input("Enter URL 2 (optional):")
 
     # Sidebar for LLM selection
-    st.sidebar.title("Choose LLM Vendor")
+    st.sidebar.title("Choose the model:")
     llm_vendor = st.sidebar.selectbox(
         "Choose LLM:",
         ("OpenAI GPT-4", "GPT-4o-mini", "Gemini", "Cohere")
@@ -66,9 +66,9 @@ else:
     # Sidebar options for summarizing
     st.sidebar.title("Options")
 
-    # Model selection
-    openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("mini", "regular"))
-    model_to_use = "gpt-4o-mini" if openAI_model == "mini" else "gpt-4o"
+    # # Model selection
+    # openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("mini", "regular"))
+    # model_to_use = "gpt-4o-mini" if openAI_model == "mini" else "gpt-4o"
 
     # Summary options
     summary_options = st.sidebar.radio(
