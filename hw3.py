@@ -116,23 +116,23 @@ else:
         else:
             return "Invalid LLM Vendor"
 
-    # Example question from user
-    question = st.text_input("Ask your question:")
-    if question:
-        response = call_llm(question, llm_vendor, context)
+    # # Example question from user
+    # question = st.text_input("Ask your question:")
+    # if question:
+    #     response = call_llm(question, llm_vendor, context)
 
-        # Stream the response (for OpenAI models)
-        if llm_vendor == "OpenAI GPT-4":
-            for message in response:
-                st.write(message["choices"][0]["delta"].get("content", ""), end="")
-        else:
-            st.write(response)
+    #     # Stream the response (for OpenAI models)
+    #     if llm_vendor == "OpenAI GPT-4":
+    #         for message in response:
+    #             st.write(message["choices"][0]["delta"].get("content", ""), end="")
+    #     else:
+    #         st.write(response)
 
-    # Set up the session state to hold chatbot messages with a buffer limit
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = [
-            {"role": "assistant", "content": "How can I help you?"}
-        ]
+    # # Set up the session state to hold chatbot messages with a buffer limit
+    # if "chat_history" not in st.session_state:
+    #     st.session_state["chat_history"] = [
+    #         {"role": "assistant", "content": "How can I help you?"}
+    #     ]
 
     # Define the conversation buffer size (2 user messages and 2 responses)
     conversation_buffer_size = 4  # 2 user messages + 2 assistant responses
