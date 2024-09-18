@@ -135,7 +135,7 @@ combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
 # LLM Vendor Selection Logic
 if llm_vendor == "Cohere":
     # Add logic to handle Cohere-specific API calls
-    client = CohereClient(api_key="your_cohere_api_key")
+    client = Cohere(api_key="your_cohere_api_key")
     messages = [{"role": "user", "content": "Hello"}]  # Example messages
     response = generate_cohere_response(client, messages)
 elif llm_vendor == "Gemini":
