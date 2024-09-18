@@ -13,7 +13,7 @@ st.write(
 def generate_text(prompt, api_key):
     co = cohere.Client(api_key)
     response = co.generate(
-        model="xlarge",  # Use a supported model name
+        model="command",  # Use a supported model name
         prompt=prompt,
         temperature=0,  # Adjust temperature as needed
         max_tokens=1500
@@ -31,7 +31,8 @@ else:
 
     # Sidebar options for summarizing
     st.sidebar.title("Options")
-    model_option = st.sidebar.selectbox("Choose the Cohere Model", ("xlarge", "medium"))
+    model_option = st.sidebar.selectbox("Choose the Cohere Model", ("command-r", "medium"))
+    
 
     # Summary options
     summary_options = st.sidebar.radio(
