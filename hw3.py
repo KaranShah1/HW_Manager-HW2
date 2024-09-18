@@ -1,21 +1,16 @@
-
 import streamlit as st
-import requests
 from openai import OpenAI
-import cohere
 
-# Show title and description
-st.title("LAB-03-Karan Shah📄 Document Question Answering and Chatbot")
+# Show title and description.
+st.title("HW-03-Karan Shah📄 Document question answering and Chatbot")
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
     "You can also interact with the chatbot. "
     "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
 )
 
-# Fetch the API keys from Streamlit secrets
-openai_api_key = st.secrets.get("openai")
-gemini_api_key = st.secrets.get("gemini")
-cohere_api_key = st.secrets.get("cohere")
+# Fetch the OpenAI API key from Streamlit secrets
+openai_api_key = st.secrets["openai"]
 
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝")
@@ -24,13 +19,14 @@ else:
     client = OpenAI(api_key=openai_api_key)
 
     # Let the user upload a file via st.file_uploader.
-    uploaded_file = st.file_uploader("Upload a document (.txt or .pdf)", type=("txt", "pdf"))
+    uploaded_file = st.file_uploader("Upload a document (.txt or .pdf)", type=("txt", "md"))
 
     # Sidebar options for summarizing 
     st.sidebar.title("Options")
-
+    
     # Model selection
-    model_option = st.sidebar.selectbox("Choose the model:", ["GPT-4o-mini", "Gemini", "Cohere"])
+    openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("GPT-4o-mini", "GPT-4o"))
+    model_to_use = "gpt-4o-mini" if openAI_model == "GPT-4o-mini" else "GPT-4o"
 
     # Summary options
     summary_options = st.sidebar.radio(
@@ -43,12 +39,8 @@ else:
     )
 
     if uploaded_file:
-        # Process the uploaded file, handling potential decoding issues
-        try:
-            document = uploaded_file.read().decode('utf-8')
-        except UnicodeDecodeError:
-            # If utf-8 decoding fails, use a more lenient approach
-            document = uploaded_file.read().decode('utf-8', errors='replace')
+        # Process the uploaded file
+        document = uploaded_file.read().decode()
 
         # Instruction based on user selection on the sidebar menu
         instruction = f"Summarize the document in {summary_options.lower()}."
@@ -61,99 +53,76 @@ else:
             }
         ]
 
-        # Generate the summary using the selected model (OpenAI, Gemini, or Cohere)
-        if model_option == "GPT-4o-mini":
-            stream = client.chat_completions.create(
-                model="gpt-4o-mini",
-                messages=messages,
-                stream=True,
-            )
+        # Generate the summary using the OpenAI API
+        stream = client.chat.completions.create(
+            model=model_to_use,
+            messages=messages,
+            stream=True,
+        )
 
-            # Display the streamed output
-            for chunk in stream:
-                st.write(chunk.choices[0].message['content'])
+        # Stream the summary response to the app
+        st.write_stream(stream)
 
-        elif model_option == "Gemini":
-            if gemini_api_key:
-                response_text = google_dem(prompt=document, api_key=gemini_api_key)
-                st.write(response_text)
-            else:
-                st.error("Please add your Gemini API key to use Gemini.")
-
-        elif model_option == "Cohere":
-            if cohere_api_key:
-                response_text = generate_text(prompt=document, api_key=cohere_api_key)
-                st.write(response_text)
-            else:
-                st.error("Please add your Cohere API key to use Cohere.")
-
-    # Set up session state to hold chatbot messages with a buffer limit
+    # Set up the session state to hold chatbot messages with a buffer limit
     if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = [{"role": "assistant", "content": "How can I help you?"}]
+        st.session_state["chat_history"] = [
+            {"role": "assistant", "content": "How can I help you?"}
+        ]
 
-# Function to read content from a URL
-def read_url_content(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        soup = BeautifulSoup(response.content, 'html.parser')
-        return soup.get_text()
-    except requests.RequestException as e:
-        st.error(f"Error reading {url}: {e}")
-        return None
+    # Define the conversation buffer size (2 user messages and 2 responses)
+    conversation_buffer_size = 4  # 2 user messages + 2 assistant responses
 
-# Define the generate_text function using Cohere
-def generate_text(prompt, api_key):
-    co = cohere.Client(api_key)
-    response = co.generate(
-        model="command-r",  # Use the correct model name
-        prompt=prompt,
-        temperature=0.5,  # Adjust temperature as needed
-        max_tokens=500
-    )
-    return response.generations[0].text
+    def manage_conversation_buffer():
+        """Ensure the conversation buffer size does not exceed the limit."""
+        if len(st.session_state.chat_history) > conversation_buffer_size:
+            # Keep only the last conversation_buffer_size messages
+            st.session_state.chat_history = st.session_state.chat_history[-conversation_buffer_size:]
 
-def google_dem(prompt, api_key):
-    # This function assumes Gemini API has a similar call pattern
-    # Adjust this according to the actual SDK or API specifications for Gemini
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-pro')
+    # Display the chatbot conversation
+    st.write("## Chatbot Interaction")
+    for msg in st.session_state.chat_history:
+        chat_msg = st.chat_message(msg["role"])
+        chat_msg.write(msg["content"])
 
-    messages = [{"role": "user", "parts": prompt}]
-    response = model.generate_content(messages)
-    return response.text
+    # Get user input for the chatbot
+    if prompt := st.chat_input("Ask the chatbot a question or interact:"):
+        # Append the user input to the session state
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
 
-# Chatbot section
-st.write("## Chatbot Interaction")
-for msg in st.session_state.chat_history:
-    st.chat_message(msg["role"]).write(msg["content"])
+        # Display the user input in the chat
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-# Get user input for the chatbot
-if prompt := st.chat_input("Ask the chatbot a question or interact:"):
-    st.session_state.chat_history.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
+        # Ensure the conversation buffer size does not exceed the limit
+        manage_conversation_buffer()
 
-    # Generate response
-    if model_option == "GPT-4o-mini" and openai_api_key:
-        stream = client.chat_completions.create(
-            model="gpt-4o-mini",
+        # Generate a response from OpenAI using the same model
+        stream = client.chat.completions.create(
+            model=model_to_use,
             messages=st.session_state.chat_history,
             stream=True,
         )
-        for chunk in stream:
-            response_text = chunk.choices[0].message['content']
-            st.session_state.chat_history.append({"role": "assistant", "content": response_text})
-            st.chat_message("assistant").write(response_text)
 
-    elif model_option == "Gemini" and gemini_api_key:
-        response_text = google_dem(prompt, gemini_api_key)
-        st.session_state.chat_history.append({"role": "assistant", "content": response_text})
-        st.chat_message("assistant").write(response_text)
+        # Stream the assistant's response
+        with st.chat_message("assistant"):
+            response = st.write_stream(stream)
 
-    elif model_option == "Cohere" and cohere_api_key:
-        response_text = generate_text(prompt, cohere_api_key)
-        st.session_state.chat_history.append({"role": "assistant", "content": response_text})
-        st.chat_message("assistant").write(response_text)
+        # Append the assistant's response to the session state
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-    else:
-        st.error("Please provide the correct API key to use the selected model.")
+        # Now, implement the logic to ask, "Do you want more info?"
+        if "yes" in prompt.lower():
+            follow_up_response = "Great! Here's more information: ..."
+        elif "no" in prompt.lower():
+            follow_up_response = "Okay! Feel free to ask anything else."
+
+        # If not yes/no, the assistant will ask, "Do you want more info?"
+        else:
+            follow_up_response = "Do you want more info?"
+
+        # Append the follow-up response to the session state and display
+        st.session_state.chat_history.append({"role": "assistant", "content": follow_up_response})
+        st.chat_message("assistant").write(follow_up_response)
+
+        # Ensure the conversation buffer size does not exceed the limit
+        manage_conversation_buffer()
