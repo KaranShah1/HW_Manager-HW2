@@ -28,30 +28,30 @@ else:
     openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("gpt-4o-mini", "gpt-4o"))
     model_to_use = "gpt-4o-mini" if openAI_model == "mini" else "gpt-4o"
 
-    # Summary options
-    summary_options = st.sidebar.radio(
-        "Select a format for summarizing the document:",
-        (
-            "Summarize the document in 100 words",
-            "Summarize the document in 2 connecting paragraphs",
-            "Summarize the document in 5 bullet points"
-        ),
-    )
+    # # Summary options
+    # summary_options = st.sidebar.radio(
+    #     "Select a format for summarizing the document:",
+    #     (
+    #         "Summarize the document in 100 words",
+    #         "Summarize the document in 2 connecting paragraphs",
+    #         "Summarize the document in 5 bullet points"
+    #     ),
+    # )
 
-    if uploaded_file:
-        # Process the uploaded file
-        document = uploaded_file.read().decode()
+    # if uploaded_file:
+    #     # Process the uploaded file
+    #     document = uploaded_file.read().decode()
 
-        # Instruction based on user selection on the sidebar menu
-        instruction = f"Summarize the document in {summary_options.lower()}."
+    #     # Instruction based on user selection on the sidebar menu
+    #     instruction = f"Summarize the document in {summary_options.lower()}."
 
-        # Prepare the messages for the LLM
-        messages = [
-            {
-                "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {instruction}",
-            }
-        ]
+    #     # Prepare the messages for the LLM
+    #     messages = [
+    #         {
+    #             "role": "user",
+    #             "content": f"Here's a document: {document} \n\n---\n\n {instruction}",
+    #         }
+    #     ]
 
         # Generate the summary using the OpenAI API
         stream = client.chat.completions.create(
