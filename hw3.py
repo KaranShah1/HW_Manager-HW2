@@ -146,13 +146,13 @@ def read_webpage_from_url(url):
 # Fetch the webpage contents if URLs are provided
 documents = []
 if url1:
-    doc1 = read_webpage_from_url(url1)
-    if doc1:
-        documents.append(doc1)
+    document1 = read_webpage_from_url(url1)
+    if document1:
+        documents.append(document1)
 if url2:
-    doc2 = read_webpage_from_url(url2)
-    if doc2:
-        documents.append(doc2)
+    document2 = read_webpage_from_url(url2)
+    if document2:
+        documents.append(document2)
 
 combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
 
