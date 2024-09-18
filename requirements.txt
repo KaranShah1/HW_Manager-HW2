@@ -7,4 +7,3 @@ google-generativeai
 cohere
 python-dotenv
 bs4
-genai
