@@ -1,8 +1,10 @@
 import streamlit as st
+import requests
+from bs4 import BeautifulSoup
 from openai import OpenAI
 
 # Show title and description.
-st.title("HW-03-Karan Shah📄 Document question answering and Chatbot - Open AI")
+st.title("HW-03-Karan Shah📄 Document Question Answering and Chatbot - OpenAI")
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
     "You can also interact with the chatbot. "
@@ -43,10 +45,29 @@ else:
     url1 = st.sidebar.text_input("Enter the first URL")
     url2 = st.sidebar.text_input("Enter the second URL")
 
-    if url1 and url2:
-        st.sidebar.write(f"Comparing the content from the following URLs:\n- {url1}\n- {url2}")
-        # You can process these URLs further to fetch the content using an API or web scraping.
+    def fetch_url_content(url):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # Extract and return text content from the HTML
+            return soup.get_text()
+        except Exception as e:
+            st.error(f"Error fetching URL {url}: {e}")
+            return ""
 
+    if url1 and url2:
+        content1 = fetch_url_content(url1)
+        content2 = fetch_url_content(url2)
+        st.sidebar.write(f"Comparing the content from the following URLs:\n- {url1}\n- {url2}")
+        st.write("### URL 1 Content")
+        st.write(content1)
+        st.write("### URL 2 Content")
+        st.write(content2)
+        
+        # You can process these URLs further to generate summaries or comparisons
+        # Example: Send content to the OpenAI model for comparison or summarization
+    
     # **Conversation Memory Options**
     memory_type = st.sidebar.radio(
         "Choose the conversation memory type:",
