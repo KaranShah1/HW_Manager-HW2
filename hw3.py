@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 import cohere
 import google.generativeai as genai
+import tiktoken
 
 # Sidebar Options
 st.sidebar.title("LLM Interaction Settings")
@@ -29,6 +30,24 @@ memory_type = st.sidebar.selectbox(
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
+# Function to calculate tokens
+def calculate_tokens(messages):
+    """Calculate total tokens for a list of messages."""
+    total_tokens = 0
+    encoding = tiktoken.encoding_for_model('gpt-4')
+    for msg in messages:
+        total_tokens += len(encoding.encode(msg['content']))
+    return total_tokens
+
+# Function to truncate messages by token limit
+def truncate_messages_by_tokens(messages, max_tokens):
+    """Truncate the message buffer to ensure it stays within max tokens."""
+    total_tokens = calculate_tokens(messages)
+    while total_tokens > max_tokens and len(messages) > 1:
+        messages.pop(0)
+        total_tokens = calculate_tokens(messages)
+    return messages
+
 # Function to handle the conversation memory logic
 def handle_memory(messages, memory_type):
     if memory_type == "Buffer of 5 questions":
@@ -38,8 +57,7 @@ def handle_memory(messages, memory_type):
         summary = " ".join([msg['content'] for msg in messages])
         return [{"role": "system", "content": summary}]
     elif memory_type == "Buffer of 5,000 tokens":
-        # Placeholder for token-count-based memory logic (OpenAI-specific logic may apply)
-        return messages  # Assuming message length doesn't exceed 5,000 tokens for now
+        return truncate_messages_by_tokens(messages, 5000)
 
 # Function to generate Cohere response
 def generate_cohere_response(client, messages):
@@ -62,13 +80,8 @@ def verify_gemini_key(api_key):
 # Function to generate Gemini response
 def generate_gemini_response(client, messages):
     try:
-        # Apply memory handling based on the selected memory type
         msgs = handle_memory(messages, memory_type)
-
-        # Prepare the message history with "user" and "model" roles
         formatted_msgs = [{"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg["content"]}]} for msg in msgs]
-
-        # Generate the response from Gemini API
         response = client.generate_content(
             contents=formatted_msgs,
             generation_config=genai.types.GenerationConfig(
@@ -77,7 +90,6 @@ def generate_gemini_response(client, messages):
             )
         )
         return response.generations[0].text
-
     except Exception as e:
         st.error(f"Error generating Gemini response: {e}")
         return None
@@ -85,39 +97,25 @@ def generate_gemini_response(client, messages):
 # Function to generate OpenAI response
 def generate_openai_response(client, messages, model):
     try:
-        # Apply memory handling based on the selected memory type
         chat_history = handle_memory(messages, memory_type)
-
-        # Format messages for OpenAI's API
-        formatted_messages = [
-            {"role": m["role"], "content": m["content"]}
-            for m in chat_history
-        ]
-
-        # Generate the response from OpenAI API
+        formatted_messages = [{"role": m["role"], "content": m["content"]} for m in chat_history]
         response = openai.ChatCompletion.create(
             model=model,
             messages=formatted_messages,
             temperature=0,
             max_tokens=1500
         )
-        
         return response.choices[0].message['content']
-    
     except Exception as e:
-        st.error(f"Error generating response: {e}")
+        st.error(f"Error generating OpenAI response: {e}")
         return None
 
 # Reading Webpages and Combining Documents Logic
 def read_webpage_from_url(url):
     try:
-        # Send an HTTP request to the URL
         response = requests.get(url)
-        # Check if the request was successful
         if response.status_code == 200:
-            # Parse the HTML content using BeautifulSoup
             soup = BeautifulSoup(response.content, 'html.parser')
-            # Extract the text content of the webpage
             text = soup.get_text(separator="\n")
             return text
         else:
@@ -145,20 +143,17 @@ context_message = {"role": "system", "content": f"Here are the documents to refe
 st.session_state.messages.append(context_message)
 
 # LLM Vendor Selection Logic
+response = None
 if llm_vendor == "Cohere":
-    # Add logic to handle Cohere-specific API calls
     client = cohere.Client(api_key="your_cohere_api_key")
-    messages = [{"role": "user", "content": "Hello"}]  # Example messages
     response = generate_cohere_response(client, st.session_state.messages)
 elif llm_vendor == "Gemini":
-    # Add logic to handle Gemini-specific API calls
     client, is_valid, message = verify_gemini_key(api_key="your_gemini_api_key")
     if is_valid:
         response = generate_gemini_response(client, st.session_state.messages)
     else:
         st.error(message)
 elif llm_vendor == "OpenAI":
-    # Handle OpenAI-specific API calls
     openai.api_key = "your_openai_api_key"
     model = "gpt-3.5-turbo"  # Specify the OpenAI model
     response = generate_openai_response(openai, st.session_state.messages, model)
