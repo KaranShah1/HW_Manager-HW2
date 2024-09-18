@@ -1,4 +1,5 @@
 import os
+import openai
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
@@ -159,7 +160,7 @@ combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
 # LLM Vendor Selection Logic
 if llm_vendor == "Cohere":
     # Add logic to handle Cohere-specific API calls
-    client = Cohere(api_key="your_cohere_api_key")
+    client = cohere.Client(api_key="your_cohere_api_key")
     messages = [{"role": "user", "content": "Hello"}]  # Example messages
     response = generate_cohere_response(client, messages)
 elif llm_vendor == "Gemini":
