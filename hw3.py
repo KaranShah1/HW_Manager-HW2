@@ -1,5 +1,4 @@
 import streamlit as st
-import genai
 from cohere import CohereClient
 from bs4 import BeautifulSoup
 import openai
