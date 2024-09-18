@@ -31,7 +31,7 @@ else:
 
     # Sidebar options for summarizing
     st.sidebar.title("Options")
-    model_option = st.sidebar.selectbox("Choose the Gemini Model", ("Cohere", "blank")
+    model_option = st.sidebar.selectbox("Choose the Cohere Model", ("Cohere", "blank"))
 
     # Summary options
     summary_options = st.sidebar.radio(
