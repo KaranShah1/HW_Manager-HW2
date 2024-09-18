@@ -43,7 +43,7 @@ def handle_memory(messages, memory_type):
 def generate_cohere_response(client, messages):
     try:
         # Apply memory handling based on the selected memory type
-        chat_history = handle_memory(messages, memory_type)
+        #chat_history = handle_memory(messages, memory_type)
 
         # Prepare the latest user message to send to Cohere API
         prompt = messages[-1]['content']  # Get the last user's message
@@ -52,7 +52,7 @@ def generate_cohere_response(client, messages):
         stream = client.chat_stream(
             model='command-r',
             message=prompt,
-            chat_history=chat_history,
+            #chat_history=chat_history,
             temperature=0,
             max_tokens=1500,
         )
