@@ -1,4 +1,5 @@
 import streamlit as st
+import google.generativeai as genai
 
 # Show title and description.
 st.title("Test-Karan Shah📄 Document question answering and Chatbot - Gemini AI")
