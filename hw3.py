@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI
 
 # Show title and description.
-st.title("HW-03-Karan Shah📄 Document question answering and Chatbot")
+st.title("HW-03-Karan Shah📄 Document question answering and Chatbot" OPEN AI )
 st.write(
     "Upload a document below and ask a question about it – GPT will answer! "
     "You can also interact with the chatbot. "
