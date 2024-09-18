@@ -1,174 +1,149 @@
 import streamlit as st
-from openai import OpenAI
+import genai
+import requests  # Missing import
+from cohere import CohereClient
+from bs4 import BeautifulSoup
 
-# Show title and description.
-st.title("HW-03-Karan Shah📄 Document question answering and Chatbot - Open AI")
-st.write(
-    "Upload a document below and ask a question about it – GPT will answer! "
-    "You can also interact with the chatbot. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+# Sidebar Options
+st.sidebar.title("LLM Interaction Settings")
+
+# URL Input in Sidebar
+url1 = st.sidebar.text_input("Enter first URL:")
+url2 = st.sidebar.text_input("Enter second URL:")
+
+# LLM Vendor Selection in Sidebar
+llm_vendor = st.sidebar.selectbox(
+    "Select LLM Vendor", 
+    ("Cohere", "Gemini", "OpenAI")
 )
 
-# Fetch the OpenAI API key from Streamlit secrets
-openai_api_key = st.secrets["openai"]
+# Conversation Memory Type Selection in Sidebar
+memory_type = st.sidebar.selectbox(
+    "Select Conversation Memory Type", 
+    ("Buffer of 5 questions", "Conversation Summary", "Buffer of 5,000 tokens")
+)
 
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝")
-else:
-    # Create an OpenAI client
-    client = OpenAI(api_key=openai_api_key)
+# Function to handle the conversation memory logic
+def handle_memory(messages, memory_type):
+    if memory_type == "Buffer of 5 questions":
+        # Only keep the last 5 messages
+        return messages[-5:]
+    elif memory_type == "Conversation Summary":
+        # Create a simple summary of the conversation
+        summary = " ".join([msg['content'] for msg in messages])
+        return [{"role": "system", "content": summary}]
+    elif memory_type == "Buffer of 5,000 tokens":
+        # Keep the messages within a 5,000 token buffer
+        # This is a placeholder for actual token counting logic (which depends on the model)
+        return messages  # Assuming message length doesn't exceed 5,000 tokens for now
 
-    # Let the user upload a file via st.file_uploader.
-    uploaded_file = st.file_uploader("Upload a document (.txt or .md)", type=("txt", "md"))
+# Function to generate Cohere response
+def generate_cohere_response(client, messages):
+    try:
+        # Apply memory handling based on the selected memory type
+        chat_history = handle_memory(messages, memory_type)
 
-    # Sidebar options for summarizing 
-    st.sidebar.title("Options")
-    
-    # Model selection
-    openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("gpt-4o-mini", "gpt-4o"))
-    model_to_use = "gpt-4o-mini" if openAI_model == "gpt-4o-mini" else "gpt-4o"
+        # Prepare the latest user message to send to Cohere API
+        prompt = messages[-1]['content']  # Get the last user's message
 
-    # Summary options
-    summary_options = st.sidebar.radio(
-        "Select a format for summarizing the document:",
-        (
-            "Summarize the document in 100 words",
-            "Summarize the document in 2 connecting paragraphs",
-            "Summarize the document in 5 bullet points"
-        ),
-    )
-
-    # **New URL Input Section**
-    st.sidebar.write("### Compare Content from Two URLs")
-    url1 = st.sidebar.text_input("Enter the first URL")
-    url2 = st.sidebar.text_input("Enter the second URL")
-
-    if url1 and url2:
-        st.sidebar.write(f"Comparing the content from the following URLs:\n- {url1}\n- {url2}")
-        # You can process these URLs further to fetch the content using an API or web scraping.
-
-    # **Conversation Memory Options**
-    memory_type = st.sidebar.radio(
-        "Choose the conversation memory type:",
-        (
-            "Buffer of 5 questions",
-            "Conversation summary",
-            "Buffer of 5,000 tokens"
-        ),
-    )
-
-    # Function to generate a summary of the conversation
-    def generate_summary(messages):
-        summary_request = [
-            {"role": "system", "content": "Summarize the following conversation."},
-            {"role": "user", "content": "Summarize this conversation: " + str(messages)}
-        ]
-        summary_response = client.chat.completions.create(
-            model=model_to_use,
-            messages=summary_request,
+        # Generate the response from Cohere API
+        stream = client.chat_stream(
+            model='command-r',
+            message=prompt,
+            chat_history=chat_history,
+            temperature=0,
+            max_tokens=1500,
         )
-        return summary_response.choices[0].message['content']
+        return stream
 
-    # Function to manage token buffer (for 5,000 tokens)
-    def manage_token_buffer(messages, token_limit=5000):
-        # Example token calculation: assuming each message averages 4 tokens per word.
-        token_count = sum(len(msg["content"].split()) * 4 for msg in messages)
-        while token_count > token_limit:
-            messages.pop(0)  # Remove the oldest message
-            token_count = sum(len(msg["content"].split()) * 4 for msg in messages)
-        return messages
+    except Exception as e:
+        st.error(f"Error generating response: {e}")
+        return None
 
-    # Memory management based on user selection
-    def manage_memory():
-        if memory_type == "Buffer of 5 questions":
-            if len(st.session_state.chat_history) > 5:
-                st.session_state.chat_history = st.session_state.chat_history[-5:]
-        elif memory_type == "Conversation summary":
-            summary = generate_summary(st.session_state.chat_history)
-            st.session_state.chat_history = [{"role": "assistant", "content": summary}]
-        elif memory_type == "Buffer of 5,000 tokens":
-            st.session_state.chat_history = manage_token_buffer(st.session_state.chat_history)
 
-    # Display the document summary (if a document is uploaded)
-    if uploaded_file:
-        # Process the uploaded file
-        document = uploaded_file.read().decode()
+# Function to verify Gemini API key
+def verify_gemini_key(api_key):
+    try:
+        genai.configure(api_key=api_key)
+        client = genai.GenerativeModel('gemini-pro')  # Use Gemini model
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
 
-        # Instruction based on user selection on the sidebar menu
-        instruction = f"Summarize the document in {summary_options.lower()}."
 
-        # Prepare the messages for the LLM
-        messages = [
-            {
-                "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {instruction}",
-            }
-        ]
+# Function to generate Gemini response
+def generate_gemini_response(client, messages):
+    try:
+        # Apply memory handling based on the selected memory type
+        msgs = handle_memory(messages, memory_type)
 
-        # Generate the summary using the OpenAI API
-        stream = client.chat.completions.create(
-            model=model_to_use,
-            messages=messages,
+        # Prepare the message history with "user" and "model" roles and "parts"
+        formatted_msgs = []
+        for msg in msgs:
+            role = "user" if msg['role'] == "user" else "model"
+            formatted_msgs.append({"role": role, "parts": [{"text": msg["content"]}]})
+
+        # Generate the response from Gemini API
+        response = client.generate_content(
+            contents=formatted_msgs,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=1500,
+            ),
             stream=True,
         )
+        return response
 
-        # Stream the summary response to the app
-        st.write_stream(stream)
+    except Exception as e:
+        st.error(f"Error generating response: {e}")
+        return None
 
-    # Set up the session state to hold chatbot messages with a buffer limit
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = [
-            {"role": "assistant", "content": "How can I help you?"}
-        ]
 
-    # Display the chatbot conversation
-    st.write("## Chatbot Interaction")
-    for msg in st.session_state.chat_history:
-        chat_msg = st.chat_message(msg["role"])
-        chat_msg.write(msg["content"])
-
-    # Get user input for the chatbot
-    if prompt := st.chat_input("Ask the chatbot a question or interact:"):
-        # Append the user input to the session state
-        st.session_state.chat_history.append({"role": "user", "content": prompt})
-
-        # Display the user input in the chat
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Ensure the memory type is maintained
-        manage_memory()
-
-        # Generate a response from OpenAI using the same model
-        stream = client.chat.completions.create(
-            model=model_to_use,
-            messages=st.session_state.chat_history,
-            stream=True,
-        )
-
-        # Stream the assistant's response
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-
-        # Append the assistant's response to the session state
-        st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-        # Manage memory again after response
-        manage_memory()
-
-        # Now, implement the logic to ask, "Do you want more info?"
-        if "yes" in prompt.lower():
-            follow_up_response = "Great! Here's more information: ..."
-        elif "no" in prompt.lower():
-            follow_up_response = "Okay! Feel free to ask anything else."
-
-        # If not yes/no, the assistant will ask, "Do you want more info?"
+# Function to read webpage content from a URL
+def read_webpage_from_url(url):
+    try:
+        # Send an HTTP request to the URL
+        response = requests.get(url)
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the HTML content using BeautifulSoup
+            soup = BeautifulSoup(response.content, 'html.parser')
+            # Extract the text content of the webpage
+            text = soup.get_text(separator="\n")
+            return text
         else:
-            follow_up_response = "Do you want more info?"
+            st.warning(f"Failed to retrieve content from {url}. Status code: {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Error reading content from {url}: {e}")
+        return None
 
-        # Append the follow-up response to the session state and display
-        st.session_state.chat_history.append({"role": "assistant", "content": follow_up_response})
-        st.chat_message("assistant").write(follow_up_response)
+# Reading Webpages and Combining Documents Logic
+documents = []
+if url1:
+    doc1 = read_webpage_from_url(url1)
+    if doc1:
+        documents.append(doc1)
+if url2:
+    doc2 = read_webpage_from_url(url2)
+    if doc2:
+        documents.append(doc2)
 
-        # Manage memory one final time
-        manage_memory()
+combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
+
+
+# LLM Vendor Selection Logic
+if llm_vendor == "Cohere":
+    # Add logic to handle Cohere-specific API calls
+    client = CohereClient(api_key="your_cohere_api_key")
+    messages = [{"role": "user", "content": "Hello"}]  # Example messages
+    response = generate_cohere_response(client, messages)
+elif llm_vendor == "Gemini":
+    # Add logic to handle Gemini-specific API calls
+    client, is_valid, message = verify_gemini_key(api_key="your_gemini_api_key")
+    if is_valid:
+        messages = [{"role": "user", "content": "Hello"}]  # Example messages
+        response = generate_gemini_response(client, messages)
+elif llm_vendor == "OpenAI":
+    # Placeholder for OpenAI handling (you can add OpenAI API logic here)
+    st.write("OpenAI LLM integration not yet implemented.")
