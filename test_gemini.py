@@ -71,7 +71,7 @@ else:
     # Function to generate a summary of the conversation (Placeholder for Gemini API)
     def generate_summary_gemini(messages):
         summary_request = {
-            "model": model_to_use,
+            "model": model_option,
             "prompt": "Summarize this conversation: " + str(messages)
         }
         # Call Gemini API for summary
@@ -107,7 +107,7 @@ else:
 
         # Prepare the messages for the Gemini API
         messages = {
-            "model": model_to_use,
+            "model": model_option,
             "prompt": f"Here's a document: {document} \n\n---\n\n {instruction}",
         }
 
