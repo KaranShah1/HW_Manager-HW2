@@ -25,7 +25,7 @@ else:
     st.sidebar.title("Options")
     
     # Model selection
-    openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("mini", "regular"))
+    openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("gpt-4o-mini", "gpt-4o"))
     model_to_use = "gpt-4o-mini" if openAI_model == "mini" else "gpt-4o"
 
     # Summary options
