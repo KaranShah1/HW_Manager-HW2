@@ -7,6 +7,20 @@ st.write(
     "You can also interact with the chatbot. "
     "To use this app, you need to provide your Gemini API key."
 )
+def google_dem(question_to_ask, api_key):
+    
+    genai.configure(api_key=api_key)
+
+    model = genai.GenerativeModel('gemini-pro')
+
+    messages = []
+
+    gem_message = "\nPlease answer the following question: \n" + str(question_to_ask)
+
+    messages.append({'role': 'user', 'parts': gem_message})
+    response = model.generate_content(messages)
+
+    return response.text
 
 # Fetch the Gemini API key from Streamlit secrets
 gemini_api_key = st.secrets["gemini"]
