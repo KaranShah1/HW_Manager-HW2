@@ -145,10 +145,10 @@ st.session_state.messages.append(context_message)
 # LLM Vendor Selection Logic
 response = None
 if llm_vendor == "Cohere":
-    client = cohere.Client(api_key="your_cohere_api_key")
+    client = cohere.Client(api_key="cohere")
     response = generate_cohere_response(client, st.session_state.messages)
 elif llm_vendor == "Gemini":
-    client, is_valid, message = verify_gemini_key(api_key="your_gemini_api_key")
+    client, is_valid, message = verify_gemini_key(api_key="gemini")
     if is_valid:
         response = generate_gemini_response(client, st.session_state.messages)
     else:
