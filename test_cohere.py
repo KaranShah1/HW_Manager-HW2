@@ -13,7 +13,7 @@ st.write(
 def generate_text(prompt, api_key):
     co = cohere.Client(api_key)
     response = co.generate(
-        model="command-r",  # Use the correct model name
+        model="xlarge",  # Use a supported model name
         prompt=prompt,
         temperature=0,  # Adjust temperature as needed
         max_tokens=1500
@@ -31,7 +31,7 @@ else:
 
     # Sidebar options for summarizing
     st.sidebar.title("Options")
-    model_option = st.sidebar.selectbox("Choose the Cohere Model", ("Cohere", "blank"))
+    model_option = st.sidebar.selectbox("Choose the Cohere Model", ("xlarge", "medium"))
 
     # Summary options
     summary_options = st.sidebar.radio(
@@ -63,11 +63,8 @@ else:
     )
 
     # Function to generate a summary of the conversation
-    def generate_summary_gemini(messages):
-        summary_request = {
-            "model": model_option,
-            "prompt": "Summarize this conversation: " + str(messages)
-        }
+    def generate_summary(messages):
+        summary_request = f"Summarize this conversation: {messages}"
         summary_response = generate_text(summary_request, cohere_api_key)
         return summary_response
 
@@ -100,13 +97,6 @@ else:
 
         # Prepare the prompt for Cohere
         prompt = f"Here's a document: {document} \n\n---\n\n {instruction}"
-
-        # Prepare the messages for the Gemini API
-        messages = {
-            "model": model_option,
-            "prompt": f"Here's a document: {document} \n\n---\n\n {instruction}",
-        }
-
 
         # Generate the summary using Cohere
         response_text = generate_text(prompt, cohere_api_key)
