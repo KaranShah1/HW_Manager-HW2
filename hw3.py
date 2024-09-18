@@ -1,8 +1,9 @@
+import os
 import streamlit as st
-from cohere import CohereClient
-from bs4 import BeautifulSoup
-import openai
 import requests
+from bs4 import BeautifulSoup
+import cohere
+import google.generativeai as genai
 
 # Sidebar Options
 st.sidebar.title("LLM Interaction Settings")
