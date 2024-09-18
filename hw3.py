@@ -31,6 +31,21 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 
 # Function to calculate tokens
+# Function to handle the conversation memory logic
+def handle_memory(messages, memory_type):
+    if memory_type == "Buffer of 5 questions":
+        # Only keep the last 5 messages
+        return messages[-5:]
+    elif memory_type == "Conversation Summary":
+        # Create a simple summary of the conversation
+        summary = " ".join([msg['content'] for msg in messages])
+        return [{"role": "system", "content": summary}]
+    elif memory_type == "Buffer of 5,000 tokens":
+        # Truncate the messages within a 5,000 token buffer
+        max_tokens = 5000
+        return truncate_messages_by_tokens(messages, max_tokens)
+
+# Function to calculate tokens
 def calculate_tokens(messages):
     """Calculate total tokens for a list of messages."""
     total_tokens = 0
@@ -48,16 +63,6 @@ def truncate_messages_by_tokens(messages, max_tokens):
         total_tokens = calculate_tokens(messages)
     return messages
 
-# Function to handle the conversation memory logic
-def handle_memory(messages, memory_type):
-    if memory_type == "Buffer of 5 questions":
-        return messages[-5:]
-    elif memory_type == "Conversation Summary":
-        # Create a simple summary of the conversation
-        summary = " ".join([msg['content'] for msg in messages])
-        return [{"role": "system", "content": summary}]
-    elif memory_type == "Buffer of 5,000 tokens":
-        return truncate_messages_by_tokens(messages, 5000)
 
 # Function to generate Cohere response
 def generate_cohere_response(client, messages):
