@@ -26,7 +26,7 @@ else:
     
     # Model selection
     openAI_model = st.sidebar.selectbox("Choose the GPT Model", ("gpt-4o-mini", "gpt-4o"))
-    model_to_use = "gpt-4o-mini" if openAI_model == "mini" else "gpt-4o"
+    model_to_use = "gpt-4o-mini" if openAI_model == "gpt-4o-mini" else "gpt-4o"
 
     # Summary options
     summary_options = st.sidebar.radio(
@@ -37,6 +37,15 @@ else:
             "Summarize the document in 5 bullet points"
         ),
     )
+
+    # **New URL Input Section**
+    st.sidebar.write("### Compare Content from Two URLs")
+    url1 = st.sidebar.text_input("Enter the first URL")
+    url2 = st.sidebar.text_input("Enter the second URL")
+
+    if url1 and url2:
+        st.sidebar.write(f"Comparing the content from the following URLs:\n- {url1}\n- {url2}")
+        # You can process these URLs further to fetch the content using an API or web scraping.
 
     if uploaded_file:
         # Process the uploaded file
