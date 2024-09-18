@@ -36,8 +36,8 @@ else:
     st.sidebar.title("Options")
 
     # Model selection (only Gemini in this case)
-    model_option = st.sidebar.selectbox("Choose the Gemini Model", ("Gemini-1", "Gemini-2"))
-    model_to_use = "Gemini-1" if model_option == "Gemini-1" else "Gemini-2"
+    model_option = st.sidebar.selectbox("Choose the Gemini Model", ("Gemini", "blank"))
+    
 
     # Summary options
     summary_options = st.sidebar.radio(
@@ -143,7 +143,7 @@ else:
 
         # Generate a response from Gemini API
         messages = {
-            "model": model_to_use,
+            "model": model_option,
             "prompt": prompt,
         }
         response_text = google_dem(messages, gemini_api_key)
