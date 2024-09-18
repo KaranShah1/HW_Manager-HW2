@@ -83,26 +83,29 @@ def generate_gemini_response(client, messages):
         return None
 
 # Function to generate OpenAI response
-def generate_openai_response(client, messages, model):
+ef generate_openai_response(client, messages, model):
     try:
         # Apply memory handling based on the selected memory type
         chat_history = handle_memory(messages, memory_type)
 
-        # Format messages for OpenAI's API
-        formatted_messages = [{"role": m["role"], "content": m["content"]} for m in chat_history]
+        # Format messages for OpenAI's API, converting the message structure to the correct format
+        formatted_messages = [
+            {"role": m["role"], "content": m["content"]}
+            for m in chat_history
+        ]
 
-        # Generate the response from OpenAI API
-        response = client.ChatCompletion.create(
+        # Generate the response from OpenAI API using the new syntax
+        response = client.chat.completions.create(
             model=model,
             messages=formatted_messages,
             temperature=0,
             max_tokens=1500
         )
         
-        return response.choices[0].message['content']
+        return response
     
     except Exception as e:
-        st.error(f"Error generating OpenAI response: {e}")
+        st.error(f"Error generating response: {e}", icon="X")
         return None
 
 # Reading Webpages and Combining Documents Logic
