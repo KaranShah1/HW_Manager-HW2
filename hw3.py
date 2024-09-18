@@ -25,35 +25,29 @@ memory_type = st.sidebar.selectbox(
     ("Buffer of 5 questions", "Conversation Summary", "Buffer of 5,000 tokens")
 )
 
+# Session state for messages
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
 # Function to handle the conversation memory logic
 def handle_memory(messages, memory_type):
     if memory_type == "Buffer of 5 questions":
-        # Only keep the last 5 messages
         return messages[-5:]
     elif memory_type == "Conversation Summary":
         # Create a simple summary of the conversation
         summary = " ".join([msg['content'] for msg in messages])
         return [{"role": "system", "content": summary}]
     elif memory_type == "Buffer of 5,000 tokens":
-        # Keep the messages within a 5,000 token buffer
-        # This is a placeholder for actual token counting logic (which depends on the model)
+        # Placeholder for token-count-based memory logic (OpenAI-specific logic may apply)
         return messages  # Assuming message length doesn't exceed 5,000 tokens for now
 
 # Function to generate Cohere response
-def generate_openai_response(client, messages, model):
+def generate_cohere_response(client, messages):
     try:
-        stream = client.chat_completions.create(
-            model='model',
-            message=messages,
-	    stream=True,
-            chat_history=["role": m["role": m['role],"message":m['content']
-            temperature=0,
-            max_tokens=1500
-            )
-            return stream
-    
-    except EXCEPTION as e:
-        st.error(f"Error generating response: {e}", icon = "X")
+        response = client.chat(messages=[msg['content'] for msg in messages])
+        return response.generations[0].text
+    except Exception as e:
+        st.error(f"Error generating Cohere response: {e}")
         return None
 
 # Function to verify Gemini API key
@@ -71,11 +65,8 @@ def generate_gemini_response(client, messages):
         # Apply memory handling based on the selected memory type
         msgs = handle_memory(messages, memory_type)
 
-        # Prepare the message history with "user" and "model" roles and "parts"
-        formatted_msgs = []
-        for msg in msgs:
-            role = "user" if msg['role'] == "user" else "model"
-            formatted_msgs.append({"role": role, "parts": [{"text": msg["content"]}]})
+        # Prepare the message history with "user" and "model" roles
+        formatted_msgs = [{"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg["content"]}]} for msg in msgs]
 
         # Generate the response from Gemini API
         response = client.generate_content(
@@ -83,13 +74,12 @@ def generate_gemini_response(client, messages):
             generation_config=genai.types.GenerationConfig(
                 temperature=0,
                 max_output_tokens=1500,
-            ),
-            stream=True,
+            )
         )
-        return response
+        return response.generations[0].text
 
     except Exception as e:
-        st.error(f"Error generating response: {e}", icon="X")
+        st.error(f"Error generating Gemini response: {e}")
         return None
 
 # Function to generate OpenAI response
@@ -98,25 +88,21 @@ def generate_openai_response(client, messages, model):
         # Apply memory handling based on the selected memory type
         chat_history = handle_memory(messages, memory_type)
 
-        # Format messages for OpenAI's API, converting the message structure to the correct format
-        formatted_messages = [
-            {"role": m["role"], "content": m["content"]}
-            for m in chat_history
-        ]
+        # Format messages for OpenAI's API
+        formatted_messages = [{"role": m["role"], "content": m["content"]} for m in chat_history]
 
         # Generate the response from OpenAI API
         response = client.ChatCompletion.create(
             model=model,
             messages=formatted_messages,
-            stream=True,  # Enable streaming
             temperature=0,
             max_tokens=1500
         )
         
-        return response
+        return response.choices[0].message['content']
     
     except Exception as e:
-        st.error(f"Error generating response: {e}", icon="X")
+        st.error(f"Error generating OpenAI response: {e}")
         return None
 
 # Reading Webpages and Combining Documents Logic
@@ -151,26 +137,34 @@ if url2:
 
 combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
 
+# Prepare the context message with the documents to refer to
+context_message = {"role": "system", "content": f"Here are the documents to refer to:\n{combined_documents}"}
+st.session_state.messages.append(context_message)
+
 # LLM Vendor Selection Logic
 if llm_vendor == "Cohere":
     # Add logic to handle Cohere-specific API calls
     client = cohere.Client(api_key="your_cohere_api_key")
     messages = [{"role": "user", "content": "Hello"}]  # Example messages
-    response = generate_cohere_response(client, messages)
+    response = generate_cohere_response(client, st.session_state.messages)
 elif llm_vendor == "Gemini":
     # Add logic to handle Gemini-specific API calls
     client, is_valid, message = verify_gemini_key(api_key="your_gemini_api_key")
     if is_valid:
-        messages = [{"role": "user", "content": "Hello"}]  # Example messages
-        response = generate_gemini_response(client, messages)
+        response = generate_gemini_response(client, st.session_state.messages)
+    else:
+        st.error(message)
 elif llm_vendor == "OpenAI":
     # Handle OpenAI-specific API calls
     openai.api_key = "your_openai_api_key"
     model = "gpt-3.5-turbo"  # Specify the OpenAI model
-    messages = [{"role": "user", "content": "Hello"}]  # Example messages
-    response = generate_openai_response(openai, messages, model)
+    response = generate_openai_response(openai, st.session_state.messages, model)
 
-# Display response (streaming may require specific handling, this is a simplified approach)
+# Display response
 if response:
-    for res in response:
-        st.write(res)
+    st.write(response)
+
+# After every chat, append the new user message to session state messages
+new_user_message = st.text_input("Your message:")
+if new_user_message:
+    st.session_state.messages.append({"role": "user", "content": new_user_message})
