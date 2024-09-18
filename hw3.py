@@ -40,26 +40,20 @@ def handle_memory(messages, memory_type):
         return messages  # Assuming message length doesn't exceed 5,000 tokens for now
 
 # Function to generate Cohere response
-def generate_cohere_response(client, messages):
+def generate_openai_response(client, messages, model):
     try:
-        # Apply memory handling based on the selected memory type
-        #chat_history = handle_memory(messages, memory_type)
-
-        # Prepare the latest user message to send to Cohere API
-        prompt = messages[-1]['content']  # Get the last user's message
-
-        # Generate the response from Cohere API
-        stream = client.chat_stream(
-            model='command-r',
-            message=prompt,
-            #chat_history=chat_history,
+        stream = client.chat_completions.create(
+            model='model',
+            message=messages,
+	    stream=True,
+            chat_history=["role": m["role": m['role],"message":m['content']
             temperature=0,
-            max_tokens=1500,
-        )
-        return stream
-
-    except Exception as e:
-        st.error(f"Error generating response: {e}", icon="X")
+            max_tokens=1500
+            )
+            return stream
+    
+    except EXCEPTION as e:
+        st.error(f"Error generating response: {e}", icon = "X")
         return None
 
 # Function to verify Gemini API key
