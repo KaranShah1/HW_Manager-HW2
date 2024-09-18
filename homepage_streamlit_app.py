@@ -29,3 +29,8 @@ elif selected_page == "Third Homework":
     st.title("HW - 3")
     # Execute the hw3.py code
     exec(open("hw3.py").read())  # This will run the content of hw3.py
+    
+elif selected_page == "Test Gemini":
+    st.title("Test")
+    # Execute the hw3.py code
+    exec(open("test_gemini.py").read())  # This will run the content of hw3.py
