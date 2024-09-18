@@ -47,6 +47,49 @@ else:
         st.sidebar.write(f"Comparing the content from the following URLs:\n- {url1}\n- {url2}")
         # You can process these URLs further to fetch the content using an API or web scraping.
 
+    # **Conversation Memory Options**
+    memory_type = st.sidebar.radio(
+        "Choose the conversation memory type:",
+        (
+            "Buffer of 5 questions",
+            "Conversation summary",
+            "Buffer of 5,000 tokens"
+        ),
+    )
+
+    # Function to generate a summary of the conversation
+    def generate_summary(messages):
+        summary_request = [
+            {"role": "system", "content": "Summarize the following conversation."},
+            {"role": "user", "content": "Summarize this conversation: " + str(messages)}
+        ]
+        summary_response = client.chat.completions.create(
+            model=model_to_use,
+            messages=summary_request,
+        )
+        return summary_response.choices[0].message['content']
+
+    # Function to manage token buffer (for 5,000 tokens)
+    def manage_token_buffer(messages, token_limit=5000):
+        # Example token calculation: assuming each message averages 4 tokens per word.
+        token_count = sum(len(msg["content"].split()) * 4 for msg in messages)
+        while token_count > token_limit:
+            messages.pop(0)  # Remove the oldest message
+            token_count = sum(len(msg["content"].split()) * 4 for msg in messages)
+        return messages
+
+    # Memory management based on user selection
+    def manage_memory():
+        if memory_type == "Buffer of 5 questions":
+            if len(st.session_state.chat_history) > 5:
+                st.session_state.chat_history = st.session_state.chat_history[-5:]
+        elif memory_type == "Conversation summary":
+            summary = generate_summary(st.session_state.chat_history)
+            st.session_state.chat_history = [{"role": "assistant", "content": summary}]
+        elif memory_type == "Buffer of 5,000 tokens":
+            st.session_state.chat_history = manage_token_buffer(st.session_state.chat_history)
+
+    # Display the document summary (if a document is uploaded)
     if uploaded_file:
         # Process the uploaded file
         document = uploaded_file.read().decode()
@@ -78,15 +121,6 @@ else:
             {"role": "assistant", "content": "How can I help you?"}
         ]
 
-    # Define the conversation buffer size (2 user messages and 2 responses)
-    conversation_buffer_size = 4  # 2 user messages + 2 assistant responses
-
-    def manage_conversation_buffer():
-        """Ensure the conversation buffer size does not exceed the limit."""
-        if len(st.session_state.chat_history) > conversation_buffer_size:
-            # Keep only the last conversation_buffer_size messages
-            st.session_state.chat_history = st.session_state.chat_history[-conversation_buffer_size:]
-
     # Display the chatbot conversation
     st.write("## Chatbot Interaction")
     for msg in st.session_state.chat_history:
@@ -102,8 +136,8 @@ else:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Ensure the conversation buffer size does not exceed the limit
-        manage_conversation_buffer()
+        # Ensure the memory type is maintained
+        manage_memory()
 
         # Generate a response from OpenAI using the same model
         stream = client.chat.completions.create(
@@ -119,6 +153,9 @@ else:
         # Append the assistant's response to the session state
         st.session_state.chat_history.append({"role": "assistant", "content": response})
 
+        # Manage memory again after response
+        manage_memory()
+
         # Now, implement the logic to ask, "Do you want more info?"
         if "yes" in prompt.lower():
             follow_up_response = "Great! Here's more information: ..."
@@ -133,5 +170,5 @@ else:
         st.session_state.chat_history.append({"role": "assistant", "content": follow_up_response})
         st.chat_message("assistant").write(follow_up_response)
 
-        # Ensure the conversation buffer size does not exceed the limit
-        manage_conversation_buffer()
+        # Manage memory one final time
+        manage_memory()
