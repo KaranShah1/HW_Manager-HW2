@@ -2,7 +2,6 @@ import streamlit as st
 import google.generativeai as genai
 import requests  # Missing import
 import cohere
-from cohere import CohereClient
 from bs4 import BeautifulSoup
 
 # Sidebar Options
