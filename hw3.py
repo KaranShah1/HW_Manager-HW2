@@ -1,8 +1,9 @@
 import streamlit as st
-import google.generativeai as genai
-import requests  # Missing import
-import cohere
+import genai
+from cohere import CohereClient
 from bs4 import BeautifulSoup
+import openai
+import requests
 
 # Sidebar Options
 st.sidebar.title("LLM Interaction Settings")
@@ -57,9 +58,8 @@ def generate_cohere_response(client, messages):
         return stream
 
     except Exception as e:
-        st.error(f"Error generating response: {e}")
+        st.error(f"Error generating response: {e}", icon="X")
         return None
-
 
 # Function to verify Gemini API key
 def verify_gemini_key(api_key):
@@ -69,7 +69,6 @@ def verify_gemini_key(api_key):
         return client, True, "API key is valid"
     except Exception as e:
         return None, False, str(e)
-
 
 # Function to generate Gemini response
 def generate_gemini_response(client, messages):
@@ -95,11 +94,37 @@ def generate_gemini_response(client, messages):
         return response
 
     except Exception as e:
-        st.error(f"Error generating response: {e}")
+        st.error(f"Error generating response: {e}", icon="X")
         return None
 
+# Function to generate OpenAI response
+def generate_openai_response(client, messages, model):
+    try:
+        # Apply memory handling based on the selected memory type
+        chat_history = handle_memory(messages, memory_type)
 
-# Function to read webpage content from a URL
+        # Format messages for OpenAI's API, converting the message structure to the correct format
+        formatted_messages = [
+            {"role": m["role"], "content": m["content"]}
+            for m in chat_history
+        ]
+
+        # Generate the response from OpenAI API
+        response = client.ChatCompletion.create(
+            model=model,
+            messages=formatted_messages,
+            stream=True,  # Enable streaming
+            temperature=0,
+            max_tokens=1500
+        )
+        
+        return response
+    
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="X")
+        return None
+
+# Reading Webpages and Combining Documents Logic
 def read_webpage_from_url(url):
     try:
         # Send an HTTP request to the URL
@@ -118,7 +143,7 @@ def read_webpage_from_url(url):
         st.error(f"Error reading content from {url}: {e}")
         return None
 
-# Reading Webpages and Combining Documents Logic
+# Fetch the webpage contents if URLs are provided
 documents = []
 if url1:
     doc1 = read_webpage_from_url(url1)
@@ -131,11 +156,10 @@ if url2:
 
 combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
 
-
 # LLM Vendor Selection Logic
 if llm_vendor == "Cohere":
     # Add logic to handle Cohere-specific API calls
-    client = Cohere(api_key="your_cohere_api_key")
+    client = CohereClient(api_key="your_cohere_api_key")
     messages = [{"role": "user", "content": "Hello"}]  # Example messages
     response = generate_cohere_response(client, messages)
 elif llm_vendor == "Gemini":
@@ -145,5 +169,13 @@ elif llm_vendor == "Gemini":
         messages = [{"role": "user", "content": "Hello"}]  # Example messages
         response = generate_gemini_response(client, messages)
 elif llm_vendor == "OpenAI":
-    # Placeholder for OpenAI handling (you can add OpenAI API logic here)
-    st.write("OpenAI LLM integration not yet implemented.")
+    # Handle OpenAI-specific API calls
+    openai.api_key = "your_openai_api_key"
+    model = "gpt-3.5-turbo"  # Specify the OpenAI model
+    messages = [{"role": "user", "content": "Hello"}]  # Example messages
+    response = generate_openai_response(openai, messages, model)
+
+# Display response (streaming may require specific handling, this is a simplified approach)
+if response:
+    for res in response:
+        st.write(res)
