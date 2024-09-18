@@ -1,5 +1,6 @@
 import streamlit as st
 import genai
+import google.generativeai as genai
 import requests  # Missing import
 from cohere import CohereClient
 from bs4 import BeautifulSoup
