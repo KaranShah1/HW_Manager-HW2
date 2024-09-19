@@ -152,8 +152,8 @@ memory_type = st.sidebar.selectbox(
     "Select Conversation Memory Type",
     ("Buffer of 5 questions", "Conversation Summary", "Buffer of 5000 tokens")
 )
-
-client = OpenAI(api_key=st.secrets["openai"])
+openai_api_key = st.secrets["openai"]
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 # Based on provider selection and use_advanced flag, update model options
 model_to_use = model_options[llm_provider]["advanced" if use_advanced else "basic"]
