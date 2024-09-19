@@ -29,6 +29,21 @@ summary_threshold = 5  # Number of messages before we start summarizing
 #     except Exception as e:
 #         st.error(f"Error generating Cohere response: {e}")
 #         return None
+# Function to generate OpenAI response
+# def generate_openai_response(client, messages, model):
+#     try:
+#         chat_history = handle_memory(messages, memory_type)
+#         formatted_messages = [{"role": m["role"], "content": m["content"]} for m in chat_history]
+#         response = openai.ChatCompletion.create(
+#             model=model,
+#             messages=formatted_messages,
+#             temperature=0,
+#             max_tokens=1500
+#         )
+#         return response.choices[0].message['content']
+#     except Exception as e:
+#         st.error(f"Error generating OpenAI response: {e}")
+#         return None
         
 # Function to calculate tokens for a message using OpenAI tokenizer
 def calculate_token_count(messages, model_name="gpt-4o"):
