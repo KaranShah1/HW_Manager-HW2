@@ -59,7 +59,7 @@ def summarize_conversation(messages, model_to_use, client):
     return summary_content
 
 # Show title and description.
-st.title("HW 03 -- Karan Shah 📄 Chatbot Interaction")
+st.title("Karan Shah 📄 Chatbot Interaction")
 st.write(
     "Interact with the chatbot! "
 )
@@ -83,7 +83,7 @@ else:
     # Add option to select LLM provider
     llm_provider = st.sidebar.selectbox(
         "Choose LLM Provider",
-        ("OpenAI", "Claude", "Mistral")
+        ("OpenAI", "Gemini", "Cohere")
     )
 
     # Checkboxes for advanced models
@@ -101,16 +101,16 @@ else:
             model_to_use = "gpt-4o"
         else:
             model_to_use = "gpt-4o-mini"
-    elif llm_provider == "Claude":
-        if use_advanced:
-            model_to_use = "claude-advanced"
-        else:
-            model_to_use = "claude-mini"
-    elif llm_provider == "Mistral":
-        if use_advanced:
-            model_to_use = "mistral-advanced"
-        else:
-            model_to_use = "mistral-mini"
+    elif llm_provider == "Cohere":
+        # if use_advanced:
+        #     model_to_use = "command-r"
+        # else:
+            model_to_use = "command-r"
+    elif llm_provider == "gemini":
+        # if use_advanced:
+        #     model_to_use = "mistral-advanced"
+        # else:
+            model_to_use = "Gemini"
 
     # Toggle the checkbox automatically
     if use_advanced and model_to_use.endswith("mini"):
@@ -147,7 +147,8 @@ else:
                 prompt_with_urls = f"Refer to this URL in your response: {url1}. {prompt}"
             else:
                 prompt_with_urls = f"Refer to this URL in your response: {url2}. {prompt}"
-
+                
+#combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
             # Append the user input to the session state
             st.session_state.chat_history.append(
                 {"role": "user", "content": prompt})
