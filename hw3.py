@@ -59,13 +59,13 @@ def summarize_conversation(messages, model_to_use, client):
     return summary_content
 
 # Show title and description.
-st.title("HW 03 -- Karan Shah 📄 Chatbot Interaction")
+st.title("LAB 03 -- Disha Negi 📄 Chatbot Interaction")
 st.write(
     "Interact with the chatbot! "
 )
 
 # Fetch the OpenAI API key from Streamlit secrets
-openai_api_key = st.secrets["openai"]
+openai_api_key = st.secrets["openai_api_key"]
 
 if not openai_api_key:
     st.info("Please add your OpenAI API key to continue.", icon="🗝️")
