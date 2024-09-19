@@ -22,7 +22,6 @@ summary_threshold = 5  # Number of messages before we start summarizing
 #     except Exception as e:
 #         st.error(f"Error generating Gemini response: {e}")
 #         return None
-
 # def generate_cohere_response(client, messages):
 #     try:
 #         response = client.chat(messages=[msg['content'] for msg in messages])
@@ -30,22 +29,7 @@ summary_threshold = 5  # Number of messages before we start summarizing
 #     except Exception as e:
 #         st.error(f"Error generating Cohere response: {e}")
 #         return None
-
-# def generate_openai_response(client, messages, model):
-#     try:
-#         chat_history = handle_memory(messages, memory_type)
-#         formatted_messages = [{"role": m["role"], "content": m["content"]} for m in chat_history]
-#         response = openai.ChatCompletion.create(
-#             model=model,
-#             messages=formatted_messages,
-#             temperature=0,
-#             max_tokens=1500
-#         )
-#         return response.choices[0].message['content']
-#     except Exception as e:
-#         st.error(f"Error generating OpenAI response: {e}")
-#         return None
-
+        
 # Function to calculate tokens for a message using OpenAI tokenizer
 def calculate_token_count(messages, model_name="gpt-4o"):
     encoding = tiktoken.encoding_for_model(model_name)
@@ -85,7 +69,7 @@ def summarize_conversation(messages, model_to_use, client):
     user_messages = [msg["content"] for msg in messages if msg["role"] == "user"]
     assistant_messages = [msg["content"] for msg in messages if msg["role"] == "assistant"]
     conversation_summary_prompt = f"Summarize this conversation: \n\nUser: {user_messages} \nAssistant: {assistant_messages}"
-    
+
     # Call LLM to summarize
     summary_response = client.chat.completions.create(
         model=model_to_use,
@@ -95,7 +79,7 @@ def summarize_conversation(messages, model_to_use, client):
 
     # Extract the summary content from the response structure
     summary_content = summary_response.choices[0].message.content
-    
+
     return summary_content
 
 # Show title and description.
@@ -136,37 +120,22 @@ else:
     )
 
     # Based on provider selection, update model options
-    # if llm_provider == "OpenAI":
-    #     if use_advanced:
-    #         model_to_use = "gpt-4o"
-    #     else:
-    #         model_to_use = "gpt-4o-mini"
-    # elif llm_provider == "Cohere":
-    #         model_to_use = "command-r"
-    # elif llm_provider == "gemini":
-    #         model_to_use = "Gemini"
+    if llm_provider == "OpenAI":
+        if use_advanced:
+            model_to_use = "gpt-4o"
+        else:
+            model_to_use = "gpt-4o-mini"
+    elif llm_provider == "Cohere":
+        # if use_advanced:
+        #     model_to_use = "command-r"
+        # else:
+            model_to_use = "command-r"
+    elif llm_provider == "gemini":
+        # if use_advanced:
+        #     model_to_use = "mistral-advanced"
+        # else:
+            model_to_use = "Gemini"
 
-#Test start
-response = None
-if llm_vendor == "Cohere":
-    client = cohere.Client(api_key="your_cohere_api_key")
-    response = generate_cohere_response(client, st.session_state.messages)
-elif llm_vendor == "Gemini":
-    client, is_valid, message = verify_gemini_key(api_key="your_gemini_api_key")
-    if is_valid:
-        response = generate_gemini_response(client, st.session_state.messages)
-    else:
-        st.error(message)
-elif llm_vendor == "OpenAI 3.5":
-    openai.api_key = "your_openai_api_key"
-    model = "gpt-3.5-turbo"
-    response = generate_openai_response(openai, st.session_state.messages, model)
-elif llm_vendor == "OpenAI 4":
-    openai.api_key = "your_openai_api_key"
-    model = "gpt-4"
-    response = generate_openai_response(openai, st.session_state.messages, model)    
-
- #Test End       
     # Toggle the checkbox automatically
     if use_advanced and model_to_use.endswith("mini"):
         st.sidebar.warning("You've selected a basic model, 'Use advanced model' will be unchecked.")
@@ -202,7 +171,7 @@ elif llm_vendor == "OpenAI 4":
                 prompt_with_urls = f"Refer to this URL in your response: {url1}. {prompt}"
             else:
                 prompt_with_urls = f"Refer to this URL in your response: {url2}. {prompt}"
-                
+
 #combined_documents = "\n\n".join(documents)  # Combine the contents of both URLs
             # Append the user input to the session state
             st.session_state.chat_history.append(
@@ -246,7 +215,7 @@ elif llm_vendor == "OpenAI 4":
                 model=model_to_use,
                 messages=messages_for_gpt,
                 stream=True,
-            ) #check
+            )
 
             # Stream the assistant's response
             with st.chat_message("assistant"):
