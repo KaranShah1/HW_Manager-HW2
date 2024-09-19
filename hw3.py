@@ -6,6 +6,31 @@ import tiktoken  # Tokenizer from OpenAI
 max_tokens = 2048
 summary_threshold = 5  # Number of messages before we start summarizing
 
+# # Function to generate Gemini response
+# def generate_gemini_response(client, messages):
+#     try:
+#         msgs = handle_memory(messages, memory_type)
+#         formatted_msgs = [{"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg["content"]}]} for msg in msgs]
+#         response = client.generate_content(
+#             contents=formatted_msgs,
+#             generation_config=genai.types.GenerationConfig(
+#                 temperature=0,
+#                 max_output_tokens=1500,
+#             )
+#         )
+#         return response.generations[0].text
+#     except Exception as e:
+#         st.error(f"Error generating Gemini response: {e}")
+#         return None
+
+# def generate_cohere_response(client, messages):
+#     try:
+#         response = client.chat(messages=[msg['content'] for msg in messages])
+#         return response.generations[0].text
+#     except Exception as e:
+#         st.error(f"Error generating Cohere response: {e}")
+#         return None
+        
 # Function to calculate tokens for a message using OpenAI tokenizer
 def calculate_token_count(messages, model_name="gpt-4o"):
     encoding = tiktoken.encoding_for_model(model_name)
@@ -102,14 +127,8 @@ else:
         else:
             model_to_use = "gpt-4o-mini"
     elif llm_provider == "Cohere":
-        # if use_advanced:
-        #     model_to_use = "command-r"
-        # else:
             model_to_use = "command-r"
     elif llm_provider == "gemini":
-        # if use_advanced:
-        #     model_to_use = "mistral-advanced"
-        # else:
             model_to_use = "Gemini"
 
     # Toggle the checkbox automatically
