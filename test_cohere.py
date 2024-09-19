@@ -130,7 +130,7 @@ def call_mistral_model(prompt_with_urls, model_name, client, chat_history):
     return stream
 
 # Main Streamlit code
-st.title("LAB 03 -- Disha Negi 📄 Chatbot Interaction")
+st.title(" -- Testing 📄 Chatbot Interaction")
 st.write("Interact with the chatbot!")
 
 # Sidebar options
@@ -143,7 +143,7 @@ url2 = st.sidebar.text_input("Enter URL 2", value="")
 # Add option to select LLM provider
 llm_provider = st.sidebar.selectbox(
     "Choose LLM Provider",
-    ("OpenAI", "Claude", "Mistral")
+    ("OpenAI", "Gemini", "Cohere")
 )
 
 # Checkboxes for advanced models
@@ -223,11 +223,11 @@ else:
                 prompt_with_urls, model_to_use, st.secrets["openai_api_key"], st.session_state.chat_history
             )
         elif llm_provider == "Claude":
-            stream = call_claude_model(
+            stream = call_cohere_model(
                 prompt_with_urls, model_to_use, st.secrets["claude_api_key"], st.session_state.chat_history
             )
         elif llm_provider == "Mistral":
-            stream = call_mistral_model(
+            stream = call_gemini_model(
                 prompt_with_urls, model_to_use, st.secrets["mistral_api_key"], st.session_state.chat_history
             )
 
