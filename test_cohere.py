@@ -2,8 +2,6 @@ import streamlit as st
 import requests
 from openai import OpenAI
 from bs4 import BeautifulSoup
-from mistralai import Mistral
-from anthropic import Anthropic
 import tiktoken  # Tokenizer from OpenAI
 
 
@@ -224,11 +222,11 @@ else:
             )
         elif llm_provider == "Claude":
             stream = call_cohere_model(
-                prompt_with_urls, model_to_use, st.secrets["claude_api_key"], st.session_state.chat_history
+                prompt_with_urls, model_to_use, st.secrets["cohere_api_key"], st.session_state.chat_history
             )
         elif llm_provider == "Mistral":
             stream = call_gemini_model(
-                prompt_with_urls, model_to_use, st.secrets["mistral_api_key"], st.session_state.chat_history
+                prompt_with_urls, model_to_use, st.secrets["gemini_api_key"], st.session_state.chat_history
             )
 
         # Stream the assistant's response
