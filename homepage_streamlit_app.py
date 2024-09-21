@@ -8,7 +8,7 @@ st.set_page_config(page_title="Multi-Page App", layout="wide")
 with st.sidebar:
     selected_page = option_menu(
         "HW Manager",
-        ["First Homework", "Second Homework", "Third Homework", "Test Gemini", "Test Cohere"],
+        ["First Homework", "Second Homework", "Third Homework", "Test Gemini", "Test"],
         icons=['book', 'book', 'book', 'book', 'book'],
         menu_icon="cast", 
         default_index=0,
@@ -35,7 +35,7 @@ elif selected_page == "Test Gemini":
     # test the test_gemini.py code
     exec(open("test_gemini.py").read())  
 
-elif selected_page == "Test Cohere":
+elif selected_page == "Test":
     st.title("Test")
     # Execute the test_cohere.py code
-    exec(open("test_cohere.py").read())  
+    exec(open("test.py").read())  
