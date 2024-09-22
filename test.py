@@ -240,7 +240,7 @@ if prompt := st.chat_input("What would you like to know?"):
     else:
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000)
 
-    with st.chat_message("system"):
+    with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
         if "OpenAI" in llm_provider:
