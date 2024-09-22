@@ -153,7 +153,10 @@ def generate_conversation_summary(client, messages, llm_provider):
         )
         return response.text
 
-st.title("My lab3 Question answering chatbot")
+st.title("Karan Shah 📄 Chatbot Interaction")
+st.write(
+    "Interact with the chatbot! "
+)
 
 # Sidebar: URL inputs
 st.sidebar.header("URL Inputs")
