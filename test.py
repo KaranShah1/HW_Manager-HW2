@@ -211,7 +211,7 @@ combined_document = "\n\n".join(documents)
 
 # Display chat history
 for message in st.session_state.messages:
-    role = "user" if message["role"] == "user" else "system"
+    role = "user" if message["role"] == "user" else "assistant"
     with st.chat_message(role):
         content = message.get("content") or  message.get("parts", [{}])[0].get("text", "")
         st.markdown(content)
@@ -223,7 +223,7 @@ if prompt := st.chat_input("What would you like to know?"):
         st.markdown(prompt)
 
     st.session_state.messages.append({"role": "user", "content": prompt})
-    context_message = {"role": "system", "content": f"Here are the documents to reference: {combined_document}"}
+    context_message = {"role": "assistant", "content": f"Here are the documents to reference: {combined_document}"}
     
     messages_for_llm = [context_message] + st.session_state.messages
     
@@ -235,7 +235,7 @@ if prompt := st.chat_input("What would you like to know?"):
             st.session_state.conversation_summary = ""
         st.session_state.conversation_summary = generate_conversation_summary(client, messages_for_llm , llm_provider)
         messages_for_llm = [ context_message,
-        {"role": "system", "content": f"Conversation summary: {st.session_state.conversation_summary}"},
+        {"role": "assistant", "content": f"Conversation summary: {st.session_state.conversation_summary}"},
         st.session_state.messages[-1]]  # Include only the latest user message
     else:
         messages_for_llm = truncate_messages_by_tokens(messages_for_llm, 5000)
@@ -267,4 +267,4 @@ if prompt := st.chat_input("What would you like to know?"):
                         full_response += chunk.text
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
-    st.session_state.messages.append({"role": "system", "content": full_response})
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
