@@ -1,27 +1,28 @@
 import streamlit as st
 import cohere
 import requests
-from bs4 import BeautifulSoup
-import tiktoken
+from bs4 import BeautifulSoup #Parses HTML for scraping text from web pages.
+import tiktoken #Utility to count tokens (text fragments) for OpenAI models.
 from openai import OpenAI
 import google.generativeai as genai
 
 # Function to read webpage content from a URL
 def read_webpage_from_url(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url) #Get the URL
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
-        document = " ".join([p.get_text() for p in soup.find_all("p")])
+        document = " ".join([p.get_text() for p in soup.find_all("p")]) #Extracts text inside <p> tags (paragraphs) and combines it into a single string
+        #f before the string tells Python to evaluate the expressions inside the {} and replace them with their values
         return document
     except requests.RequestException as e:
         st.error(f"Error reading webpage from {url}: {e}")
         return None
     except Exception as e:
-        st.error(f"Error processing the webpage: {e}")
+        st.error(f"Error processing the webpage: {e}") #Returns the combined text or an error message if fetching or processing fails
         return None
 
-# Function to calculate tokens
+# Function to calculate tokens - It ensures that LLM interactions do not exceed model token limits.
 def calculate_tokens(messages):
     """Calculate total tokens for a list of messages."""
     total_tokens = 0
@@ -30,7 +31,7 @@ def calculate_tokens(messages):
         total_tokens += len(encoding.encode(msg['content']))
     return total_tokens
 
-def truncate_messages_by_tokens(messages, max_tokens):
+def truncate_messages_by_tokens(messages, max_tokens): #This function reduces the message history if the total token count exceeds the specified max_tokens. Old messages are removed until the token limit is met.
     """Truncate the message buffer to ensure it stays within max_tokens."""
     total_tokens = calculate_tokens(messages)
     while total_tokens > max_tokens and len(messages) > 1:
@@ -39,7 +40,7 @@ def truncate_messages_by_tokens(messages, max_tokens):
     return messages
 
 # Function to verify OpenAI API key
-def verify_openai_key(api_key):
+def verify_openai_key(api_key): #Verifies the OpenAI API key by trying to list available models. Returns a client object if successful.
     try:
         client = OpenAI(api_key=api_key)
         client.models.list()
@@ -47,8 +48,8 @@ def verify_openai_key(api_key):
     except Exception as e:
         return None, False, str(e)
 
-# Function to generate summary using OpenAI
-def generate_openai_response(client, messages, model):
+# Function to generate summary using OpenAI - Sends a request to OpenAI's chat model and returns the stream of responses. If an error occurs, it displays the error in the Streamlit app
+def generate_openai_response(client, messages, model): 
     try:
         stream = client.chat.completions.create(
             model=model,
@@ -60,7 +61,7 @@ def generate_openai_response(client, messages, model):
         st.error(f"Error generating response: {e}", icon="❌")
         return None
 
-def verify_cohere_key(api_key):
+def verify_cohere_key(api_key): #Verifies the Cohere API key by running a small prompt and checking if the client works.
     try:
         client = cohere.Client(api_key)
         client.generate(prompt="Hello", max_tokens=5)
@@ -93,7 +94,7 @@ def verify_gemini_key(api_key):
     except Exception as e:
         return None, False, str(e)
 
-def generate_gemini_response(client, messages, prompt):
+def generate_gemini_response(client, messages, prompt): #Sends the conversation history to Gemini's model and streams the response based on the user’s prompt.
     try:
         msgs = []
         for msg in messages:
@@ -111,7 +112,7 @@ def generate_gemini_response(client, messages, prompt):
     except Exception as e:
         return None
 
-
+# Summarizes the conversation differently based on the selected LLM provider: Gemini, OpenAI, or Cohere.
 def generate_conversation_summary(client, messages, llm_provider):
     if llm_provider == 'Gemini':
         msgs = []
