@@ -36,6 +36,6 @@ elif selected_page == "Third Homework Retry":
     exec(open("hw3_retry.py").read())
 
 elif selected_page == "Try":
-    st.title("Try)
+    st.title("Try")
     # Execute the hw3_retry.py code
     exec(open("try.py").read())
