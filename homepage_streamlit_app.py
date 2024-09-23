@@ -8,8 +8,8 @@ st.set_page_config(page_title="Multi-Page App", layout="wide")
 with st.sidebar:
     selected_page = option_menu(
         "HW Manager",
-        ["First Homework", "Second Homework", "Third Homework", "Third Homework Retry", "Try"],
-        icons=['book', 'book', 'book', 'book', 'book'],
+        ["First Homework", "Second Homework", "Third Homework", "Third Homework Retry"],
+        icons=['book', 'book', 'book', 'book'],
         menu_icon="cast", 
         default_index=0,
     )
@@ -35,7 +35,7 @@ elif selected_page == "Third Homework Retry":
     # Execute the hw3_retry.py code
     exec(open("hw3_retry.py").read())
 
-elif selected_page == "Try":
-    st.title("Try")
-    # Execute the hw3_retry.py code
-    exec(open("try.py").read())
+# elif selected_page == "Try":
+#     st.title("Try")
+#     # Execute the hw3_retry.py code
+#     exec(open("try.py").read())
