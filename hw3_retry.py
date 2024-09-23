@@ -271,4 +271,4 @@ if prompt := st.chat_input("What would you like to know?"):
                         full_response += chunk.text
                         message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    st.session_state.messages.append({"role": "system", "content": full_response})
