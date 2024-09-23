@@ -69,7 +69,7 @@ def verify_cohere_key(api_key):
         return None, False, str(e)
 
 # Function to generate response using Cohere
-def generate_cohere_response(client, messages):
+def generate_cohere_response(, messages):
     try:
         stream = client.chat_stream(
             model='command-r',
@@ -174,14 +174,14 @@ memory_type = st.sidebar.radio(
 )
 # API key verification
 if "OpenAI" in llm_provider:
-    openai_api_key = st.secrets['key1']
+    openai_api_key = st.secrets['openai']
     client, is_valid, message = verify_openai_key(openai_api_key)
     model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
 elif "Cohere" in llm_provider:
-    cohere_api_key = st.secrets['cohere_key']
+    cohere_api_key = st.secrets['cohere']
     client, is_valid, message = verify_cohere_key(cohere_api_key)
 else:
-    gemini_api_key = st.secrets['gemini_key']
+    gemini_api_key = st.secrets['gemini']
     client, is_valid, message = verify_gemini_key(gemini_api_key)
 
 if is_valid:
