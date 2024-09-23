@@ -69,7 +69,7 @@ def verify_cohere_key(api_key):
         return None, False, str(e)
 
 # Function to generate response using Cohere
-def generate_cohere_response(, messages):
+def generate_cohere_response(cohere, messages):
     try:
         stream = client.chat_stream(
             model='command-r',
