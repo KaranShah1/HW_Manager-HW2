@@ -1,6 +1,5 @@
 streamlit
 openai
-pymupdf
 streamlit-option-menu
 googletrans
 google-generativeai
@@ -11,5 +10,5 @@ tiktoken
 PyMuPDF
 chromadb
 pysqlite3-binary
-protobuf==3.20
 PyPDF2
+protobuf==3.20
