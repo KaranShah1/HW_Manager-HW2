@@ -7,8 +7,8 @@ cohere
 python-dotenv
 bs4
 tiktoken
-PyMuPDF
-chromadb
-pysqlite3-binary
-PyPDF2
-protobuf==3.20
+#PyMuPDF
+#chromadb
+#pysqlite3-binary
+#PyPDF2
+#protobuf==3.20
