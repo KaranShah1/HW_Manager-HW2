@@ -5,6 +5,7 @@ googletrans
 google-generativeai
 cohere
 python-dotenv
+fitz
 bs4
 tiktoken
 PyMuPDF
