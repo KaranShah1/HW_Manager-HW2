@@ -9,7 +9,7 @@ with st.sidebar:
     selected_page = option_menu(
         "HW Manager",
         ["First Homework", "Second Homework", "Third Homework", "Third Homework Retry", "Fourth Homework"],
-        icons=['book', 'book', 'book', 'book'],
+        icons=['book', 'book', 'book', 'book', 'book'],
         menu_icon="cast", 
         default_index=0,
     )
