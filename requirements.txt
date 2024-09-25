@@ -6,9 +6,9 @@ google-generativeai
 cohere
 python-dotenv
 bs4
+beautifulsoup4
 tiktoken
 PyMuPDF
 chromadb
 pysqlite3-binary
 PyPDF2
-protobuf==3.20
