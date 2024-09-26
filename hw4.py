@@ -20,6 +20,7 @@ def ensure_openai_client():
         # Initialize the OpenAI client and store it in session state
         st.session_state.openai_client = OpenAI(api_key=api_key)
 
+
 # Function to create the ChromaDB collection
 def create_lab4_collection():
     if 'Lab4_vectorDB' not in st.session_state:
@@ -67,6 +68,7 @@ def create_lab4_collection():
 
     return st.session_state.Lab4_vectorDB
 
+
 # Function to query the vector database
 def query_vector_db(collection, query):
     ensure_openai_client()
@@ -87,10 +89,9 @@ def query_vector_db(collection, query):
         st.error(f"Error querying the database: {str(e)}")
         return [], []
 
-# Function to get chatbot response using OpenAI's GPT model
-def get_chatbot_response(query, context):
-    ensure_openai_client()
-    # Construct the prompt for the GPT model
+
+# Function to get chatbot response using the selected LLM
+def get_chatbot_response(query, context, llm_provider, client):
     prompt = f"""You are an AI assistant with knowledge from specific documents. Use the following context to answer the user's question. If the information is not in the context, say you don't know based on the available information.
 
 Context:
@@ -100,30 +101,113 @@ User Question: {query}
 
 Answer:"""
 
-    try:
-        # Generate streaming response using OpenAI's chat completion
-        response_stream = st.session_state.openai_client.chat.completions.create(
-            model="gpt-4o",  # Using the latest GPT-4 model
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ],
-            stream=True  # Enable streaming
+    if llm_provider == 'OpenAI GPT-4O-Mini' or llm_provider == 'OpenAI GPT-4O':
+        model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=150
         )
-        return response_stream
-    except Exception as e:
-        st.error(f"Error getting chatbot response: {str(e)}")
+        return response.choices[0].message.content
+    elif llm_provider == 'Gemini':
+        response = client.generate_content(
+            contents=[{"role": "user", "parts": [{"text": prompt}]}],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=150,
+            ),
+        )
+        return response.text
+    else:  # Cohere
+        response = client.chat(
+            model='command-r',
+            message=prompt,
+            temperature=0,       
+            max_tokens=150
+        )
+        return response.text
+
+
+# Function to summarize the conversation based on the selected LLM
+def generate_conversation_summary(client, messages, llm_provider):
+    if llm_provider == 'Gemini':
+        msgs = []
+        for msg in messages:
+            role = "user" if msg["role"] == "user" else "model"
+            msgs.append({"role": role, "parts": [{"text": msg["content"]}]})
+        prompt = {"role": "user", "parts": [{"text": "Summarize the key points of this conversation concisely:"}]}
+        response = client.generate_content(
+            contents=[prompt, *msgs],
+            generation_config=genai.types.GenerationConfig(
+                temperature=0,
+                max_output_tokens=150,
+            ),
+        )
+        return response.text
+    elif "OpenAI" in llm_provider:
+        summary_prompt = "Summarize the key points of this conversation concisely:"
+        for msg in messages:
+            summary_prompt += f"\n{msg['role']}: {msg['content']}"
+        response = client.chat.completions.create(
+            model="gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o",
+            messages=[{"role": "user", "content": summary_prompt}],
+            max_tokens=150
+        )
+        return response.choices[0].message.content
+    else:  # Cohere
+        summary_prompt = "Summarize the key points of this conversation concisely:"
+        chat_history = []
+        for msg in messages:
+            chat_history.append({"role": msg['role'], "message": msg['content']})
+            summary_prompt += f"\n{msg['role']}: {msg['content']}"
+        response = client.chat(
+            model='command-r',
+            message=summary_prompt,
+            chat_history=chat_history,
+            temperature=0,       
+            max_tokens=150
+        )
+        return response.text
+
+
+# API key verification
+def verify_keys(llm_provider):
+    if "OpenAI" in llm_provider:
+        openai_api_key = st.secrets['openai']
+        client, is_valid, message = verify_openai_key(openai_api_key)
+        model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
+    elif "Cohere" in llm_provider:
+        cohere_api_key = st.secrets['cohere']
+        client, is_valid, message = verify_cohere_key(cohere_api_key)
+    else:
+        gemini_api_key = st.secrets['gemini']
+        client, is_valid, message = verify_gemini_key(gemini_api_key)
+
+    if is_valid:
+        st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
+        return client
+    else:
+        st.sidebar.error(f"Invalid {llm_provider} API key: {message}", icon="❌")
+        st.stop()
         return None
 
-# Initialize session state for chat history, system readiness, collection, and memory buffer
+
+# Initialize session state for chat history, system readiness, and collection
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'system_ready' not in st.session_state:
     st.session_state.system_ready = False
 if 'collection' not in st.session_state:
     st.session_state.collection = None
-if 'memory_buffer' not in st.session_state:
-    st.session_state.memory_buffer = []  # Store the last 5 Q&A pairs
+
+# Sidebar to select the LLM provider
+llm_provider = st.sidebar.selectbox(
+    "Select LLM provider",
+    ["OpenAI GPT-4O", "OpenAI GPT-4O-Mini", "Gemini", "Cohere"]
+)
+
+# Verify API key and initialize the client
+client = verify_keys(llm_provider)
 
 # Page content
 st.title("Lab 4 - Document Chatbot")
@@ -146,16 +230,8 @@ if st.session_state.system_ready and st.session_state.collection:
 
     # Display chat history
     for message in st.session_state.chat_history:
-        if isinstance(message, dict):
-            # New format (dictionary with 'role' and 'content' keys)
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-        elif isinstance(message, tuple):
-            # Old format (tuple with role and content)
-            role, content = message
-            # Convert 'You' to 'user', and assume any other role is 'assistant'
-            with st.chat_message("user" if role == "You" else "assistant"):
-                st.markdown(content)
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
     # User input
     user_input = st.chat_input("Ask a question about the documents:")
@@ -165,43 +241,24 @@ if st.session_state.system_ready and st.session_state.collection:
         with st.chat_message("user"):
             st.markdown(user_input)
 
-        # Query the vector database
-        relevant_texts, relevant_docs = query_vector_db(st.session_state.collection, user_input)
-        context = "\n".join(relevant_texts)
-
-        # Update memory buffer (limit to last 5 Q&A pairs)
-        if len(st.session_state.memory_buffer) >= 5:
-            st.session_state.memory_buffer.pop(0)  # Remove the oldest conversation
-
-        # Add current user input and context to memory
-        st.session_state.memory_buffer.append({"query": user_input, "context": context})
-
-        # Combine memory buffer with the context from vector DB
-        combined_context = "\n".join([f"Q: {item['query']}\nA: {item['context']}" for item in st.session_state.memory_buffer])
-
-        # Get chatbot response using memory and vector database context
-        response_stream = get_chatbot_response(user_input, combined_context)
-
-        # Display AI response
-        with st.chat_message("assistant"):
-            response_placeholder = st.empty()
-            full_response = ""
-            for chunk in response_stream:
-                if chunk.choices[0].delta.content is not None:
-                    full_response += chunk.choices[0].delta.content
-                    response_placeholder.markdown(full_response + "▌")
-            response_placeholder.markdown(full_response)
-
-        # Add to chat history (new format)
+        # Add user message to chat history
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        st.session_state.chat_history.append({"role": "assistant", "content": full_response})
 
-        # Display relevant documents
-        with st.expander("Relevant documents used"):
-            for doc in relevant_docs:
-                st.write(f"- {doc}")
+        # Query the vector database and get the relevant context
+        context, doc_names = query_vector_db(st.session_state.collection, user_input)
 
-elif not st.session_state.system_ready:
-    st.info("The system is still preparing. Please wait...")
-else:
-    st.error("Failed to create or load the document collection. Please check the file path and try again.")
+        # Get the chatbot's response
+        response = get_chatbot_response(user_input, context, llm_provider, client)
+
+        # Display chatbot's response
+        with st.chat_message("assistant"):
+            st.markdown(response)
+
+        # Add chatbot's response to chat history
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
+
+    # Summarize the conversation
+    if st.button("Summarize Conversation"):
+        summary = generate_conversation_summary(client, st.session_state.chat_history, llm_provider)
+        st.subheader("Conversation Summary")
+        st.write(summary)
