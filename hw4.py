@@ -219,13 +219,13 @@ llm_provider = st.sidebar.selectbox(
 
 
 # Page content
-st.title("Lab 4 - Document Chatbot")
+# st.title("Lab 4 - Document Chatbot")
 
 # Check if the system is ready, if not, prepare it
 if not st.session_state.system_ready:
     # Show a spinner while processing documents
     with st.spinner("Processing documents and preparing the system..."):
-        st.session_state.collection = create_lab4_collection()
+        st.session_state.collection = create_hw4_collection()
         if st.session_state.collection:
             # Set the system as ready and show a success message
             st.session_state.system_ready = True
