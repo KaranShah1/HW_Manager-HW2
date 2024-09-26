@@ -216,8 +216,7 @@ llm_provider = st.sidebar.selectbox(
     ["OpenAI GPT-4O", "OpenAI GPT-4O-Mini", "Gemini", "Cohere"]
 )
 
-# Verify API key and initialize the client
-client = verify_keys(llm_provider)
+
 
 # Page content
 st.title("Lab 4 - Document Chatbot")
