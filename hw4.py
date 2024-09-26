@@ -64,9 +64,9 @@ def create_hw4_collection():
                     st.error(f"Error processing {filename}: {str(e)}")
 
         # Store the collection in session state
-        st.session_state.Lab4_vectorDB = collection
+        st.session_state.Hw4_vectorDB = collection
 
-    return st.session_state.Lab4_vectorDB
+    return st.session_state.Hw4_vectorDB
 
 
 # Function to query the vector database
