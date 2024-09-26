@@ -171,25 +171,35 @@ def generate_conversation_summary(client, messages, llm_provider):
 
 
 # API key verification
-def verify_keys(llm_provider):
-    if "OpenAI" in llm_provider:
-        openai_api_key = st.secrets['openai']
-        client, is_valid, message = verify_openai_key(openai_api_key)
-        model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
-    elif "Cohere" in llm_provider:
-        cohere_api_key = st.secrets['cohere']
-        client, is_valid, message = verify_cohere_key(cohere_api_key)
-    else:
-        gemini_api_key = st.secrets['gemini']
-        client, is_valid, message = verify_gemini_key(gemini_api_key)
+# Function to verify OpenAI API key
+def verify_openai_key(api_key): #Verifies the OpenAI API key by trying to list available models. Returns a client object if successful.
+    try:
+        client = OpenAI(api_key=api_key)
+        client.models.list()
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
 
-    if is_valid:
-        st.sidebar.success(f"{llm_provider} API key is valid!", icon="✅")
-        return client
-    else:
-        st.sidebar.error(f"Invalid {llm_provider} API key: {message}", icon="❌")
-        st.stop()
+# Function to generate summary using OpenAI - Sends a request to OpenAI's chat model and returns the stream of responses. If an error occurs, it displays the error in the Streamlit app
+def generate_openai_response(client, messages, model): 
+    try:
+        stream = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True,
+        )
+        return stream
+    except Exception as e:
+        st.error(f"Error generating response: {e}", icon="❌")
         return None
+
+def verify_cohere_key(api_key): #Verifies the Cohere API key by running a small prompt and checking if the client works.
+    try:
+        client = cohere.Client(api_key)
+        client.generate(prompt="Hello", max_tokens=5)
+        return client, True, "API key is valid"
+    except Exception as e:
+        return None, False, str(e)
 
 
 # Initialize session state for chat history, system readiness, and collection
