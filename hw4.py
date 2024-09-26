@@ -22,12 +22,12 @@ def ensure_openai_client():
 
 
 # Function to create the ChromaDB collection
-def create_lab4_collection():
-    if 'Lab4_vectorDB' not in st.session_state:
+def create_hw4_collection():
+    if 'hw4_vectorDB' not in st.session_state:
         # Set up the ChromaDB client
         persist_directory = os.path.join(os.getcwd(), "chroma_db")
         client = chromadb.PersistentClient(path=persist_directory)
-        collection = client.get_or_create_collection("Lab4Collection")
+        collection = client.get_or_create_collection("hw4Collection")
 
         ensure_openai_client()
 
