@@ -31,45 +31,48 @@ def create_hw4_collection():
 
         ensure_openai_client()
 
+#START TEST
 # Define the directory containing the HTML files
-html_dir = os.path.join(os.getcwd(), "su_orgs")
-if not os.path.exists(html_dir):
-    st.error(f"Directory not found: {html_dir}")
-    return None
+        html_dir = os.path.join(os.getcwd(), "su_orgs")
+        if not os.path.exists(html_dir):
+            st.error(f"Directory not found: {html_dir}")
+            return None
 
-# Process each HTML file in the directory
-for filename in os.listdir(html_dir):
-    if filename.endswith(".html"):
-        filepath = os.path.join(html_dir, filename)
-        try:
-            # Extract text from the HTML file
-            with open(filepath, "r", encoding="utf-8") as file:
-                soup = BeautifulSoup(file, 'html.parser')
-                text = soup.get_text()
+        # Process each HTML file in the directory
+        for filename in os.listdir(html_dir):
+            if filename.endswith(".html"):
+                filepath = os.path.join(html_dir, filename)
+                try:
+                    # Extract text from the HTML
+                    with open(filepath, "r", encoding="utf-8") as file:
+                        html_content = file.read()
+                        soup = BeautifulSoup(html_content, 'html.parser')
+                        text = soup.get_text(separator=' ', strip=True)
 
-            # Generate embeddings for the extracted text
-            response = st.session_state.openai_client.embeddings.create(
-                input=text, model="text-embedding-3-small"
-            )
-            embedding = response.data[0].embedding
+                    # Generate embeddings for the extracted text
+                    response = st.session_state.openai_client.embeddings.create(
+                        input=text, model="text-embedding-3-small"
+                    )
+                    embedding = response.data[0].embedding
 
-            # Add the document to ChromaDB
-            collection.add(
-                documents=[text],
-                metadatas=[{"filename": filename}],
-                ids=[filename],
-                embeddings=[embedding]
-            )
-        except Exception as e:
-            st.error(f"Error processing {filename}: {str(e)}")
+                    # Add the document to ChromaDB
+                    collection.add(
+                        documents=[text],
+                        metadatas=[{"filename": filename}],
+                        ids=[filename],
+                        embeddings=[embedding]
+                    )
+                except Exception as e:
+                    st.error(f"Error processing {filename}: {str(e)}")
 
-# Store the collection in session state
-st.session_state.Hw4_vectorDB = collection
+        # Store the collection in session state
+        st.session_state.Hw4_vectorDB = collection
 
-return st.session_state.Hw4_vectorDB
+    return st.session_state.Hw4_vectorDB
 
 
 
+#END TEST
 # Function to query the vector database
 def query_vector_db(collection, query):
     ensure_openai_client()
