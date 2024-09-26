@@ -115,13 +115,15 @@ Answer:"""
         st.error(f"Error getting chatbot response: {str(e)}")
         return None
 
-# Initialize session state for chat history, system readiness, and collection
+# Initialize session state for chat history, system readiness, collection, and memory buffer
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'system_ready' not in st.session_state:
     st.session_state.system_ready = False
 if 'collection' not in st.session_state:
     st.session_state.collection = None
+if 'memory_buffer' not in st.session_state:
+    st.session_state.memory_buffer = []  # Store the last 5 Q&A pairs
 
 # Page content
 st.title("Lab 4 - Document Chatbot")
@@ -167,8 +169,18 @@ if st.session_state.system_ready and st.session_state.collection:
         relevant_texts, relevant_docs = query_vector_db(st.session_state.collection, user_input)
         context = "\n".join(relevant_texts)
 
-        # Get streaming chatbot response
-        response_stream = get_chatbot_response(user_input, context)
+        # Update memory buffer (limit to last 5 Q&A pairs)
+        if len(st.session_state.memory_buffer) >= 5:
+            st.session_state.memory_buffer.pop(0)  # Remove the oldest conversation
+
+        # Add current user input and context to memory
+        st.session_state.memory_buffer.append({"query": user_input, "context": context})
+
+        # Combine memory buffer with the context from vector DB
+        combined_context = "\n".join([f"Q: {item['query']}\nA: {item['context']}" for item in st.session_state.memory_buffer])
+
+        # Get chatbot response using memory and vector database context
+        response_stream = get_chatbot_response(user_input, combined_context)
 
         # Display AI response
         with st.chat_message("assistant"):
