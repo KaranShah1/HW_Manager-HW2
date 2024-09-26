@@ -31,7 +31,7 @@ def create_lab4_collection():
         ensure_openai_client()
 
         # Define the directory containing the PDF files
-        pdf_dir = os.path.join(os.getcwd(), "Lab4_datafiles")
+        pdf_dir = os.path.join(os.getcwd(), "su_orgs")
         if not os.path.exists(pdf_dir):
             st.error(f"Directory not found: {pdf_dir}")
             return None
