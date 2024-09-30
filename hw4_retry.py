@@ -1,7 +1,6 @@
 import sys
 import streamlit as st
 from openai import OpenAI
-from anthropic import Anthropic
 import google.generativeai as genai
 from bs4 import BeautifulSoup
 import os
