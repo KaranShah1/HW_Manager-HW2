@@ -24,10 +24,7 @@ def ensure_openai_client():
 
 # Function to ensure the Anthropic client is initialize
 
-def ensure_anthropic_client():
-    if 'anthropic_client' not in st.session_state:
-        api_key = st.secrets["claude_api_key"]
-        st.session_state.anthropic_client = Anthropic(api_key=api_key)
+
 
 # Function to ensure the Google AI client is initialized
 
@@ -155,25 +152,7 @@ def get_chatbot_response(query, context, conversation_memory, model):
             st.error(f"Error getting GPT-4 response: {str(e)}")
             return None
 
-    elif model == "Anthropic Claude":
-        ensure_anthropic_client()
-        messages = [
-            {"role": "user", "content": f"Here's some context information: {context}\n\nConversation history:\n{condensed_history}"},
-            {"role": "assistant", "content": "I understand. I'll use this context and conversation history to answer questions consistently. What would you like to know?"},
-            {"role": "user", "content": query}
-        ]
-        try:
-            response = st.session_state.anthropic_client.messages.create(
-                model="claude-3-opus-20240229",
-                system=system_message,
-                messages=messages,
-                max_tokens=1024,
-                stream=True
-            )
-            return response
-        except Exception as e:
-            st.error(f"Error getting Claude response: {str(e)}")
-            return None
+  
 
     elif model == "Google Gemini":
         ensure_google_ai_client()
