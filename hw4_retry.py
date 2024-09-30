@@ -21,21 +21,11 @@ def ensure_openai_client():
         api_key = st.secrets["openai"]
         st.session_state.openai_client = OpenAI(api_key=api_key)
 
-# Function to ensure the Anthropic client is initialize
-
-
-
-# Function to ensure the Google AI client is initialized
-
-
 def ensure_google_ai_client():
     if 'google_ai_client' not in st.session_state:
-        api_key = st.secrets["gemini_api_key"]
+        api_key = st.secrets["gemini"]
         genai.configure(api_key=api_key)
         st.session_state.google_ai_client = genai
-
-# Function to extract HTML files from zip
-
 
 def extract_html_from_zip(zip_path):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -180,10 +170,10 @@ def main():
     # Sidebar for model selection
     st.sidebar.title("Model Selection")
     selected_model = st.sidebar.radio(
-        "Choose an LLM:", ("OpenAI GPT-4", "Anthropic Claude", "Google Gemini"))
+        "Choose an LLM:", ("OpenAI GPT-4", "Cohere, "Google Gemini"))
 
     # Page content
-    st.title("HW 4 - iSchool Chatbot")
+    st.title("HW 4 - Retry")
 
     # Check if the system is ready, if not, prepare it
     if not st.session_state.system_ready:
@@ -230,7 +220,9 @@ def main():
                         if chunk.choices[0].delta.content is not None:
                             full_response += chunk.choices[0].delta.content
                             response_placeholder.markdown(full_response + "▌")
-                if selected_model == "Anthropic Claude":
+
+                            #CHECK
+                if selected_model == "Cohere":
                     for chunk in response_stream:
                         chunk_type = getattr(chunk, 'type', None)
 
