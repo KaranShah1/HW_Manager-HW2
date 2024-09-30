@@ -170,7 +170,7 @@ def main():
     # Sidebar for model selection
     st.sidebar.title("Model Selection")
     selected_model = st.sidebar.radio(
-        "Choose an LLM:", ["OpenAI GPT-4", "Cohere", "Google Gemini"]
+        "Choose an LLM:", ["OpenAI GPT-4", "Cohere", "Google Gemini"],
     )
 
     # Page content
