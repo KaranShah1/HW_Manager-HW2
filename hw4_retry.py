@@ -9,7 +9,7 @@ import tempfile
 from collections import deque
 
 # Workaround for sqlite3 issue in Streamlit Cloud
-_import_('pysqlite3')
+__import__('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import chromadb
