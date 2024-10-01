@@ -1,87 +1,75 @@
 import streamlit as st
-from openai import OpenAI
+import openai
 import requests
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Set API Keys from Streamlit secrets
-client = OpenAI(api_key=st.secrets["openai"])
+client = openai.OpenAI(api_key=st.secrets["openai"])
 
-weather_api_key = st.secrets["weather"]  # Accessing OpenWeatherMap API key from Streamlit secrets
+# Placeholder for your vector embeddings (for courses or clubs)
+course_info = {
+    "Data Science": "Data Science is a multidisciplinary field focused on extracting knowledge from data sets, which are typically large.",
+    "Machine Learning": "Machine Learning is a field of AI that uses statistical techniques to give computer systems the ability to 'learn' from data.",
+    "Software Engineering": "Software Engineering is the application of engineering principles to the development of software."
+}
 
+# Pre-defined vectors (example) for the course info
+course_embeddings = {
+    "Data Science": np.array([0.5, 0.2, 0.1]),
+    "Machine Learning": np.array([0.8, 0.3, 0.5]),
+    "Software Engineering": np.array([0.1, 0.7, 0.6])
+}
 
-def get_weather(location="Syracuse, NY"):
-    """Fetch weather data from OpenWeatherMap."""
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={weather_api_key}&units=metric"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        return {
-            "location": data["name"],
-            "temperature": round(data["main"]["temp"], 2),
-            "feels_like": round(data["main"]["feels_like"], 2),
-            "temp_min": round(data["main"]["temp_min"], 2),
-            "temp_max": round(data["main"]["temp_max"], 2),
-            "humidity": round(data["main"]["humidity"], 2),
-            "weather": data["weather"][0]["description"]
-        }
-    else:
-        return {"error": "Could not retrieve weather data."}
+def vector_search(query):
+    """Takes in a query and returns the most relevant course info based on vector similarity."""
+    # Simulate query embedding (you would use OpenAI's API to get this in practice)
+    query_embedding = np.array([0.6, 0.3, 0.2])  # Just an example embedding
+    
+    # Compute cosine similarity between query and stored course embeddings
+    similarities = {}
+    for course, embedding in course_embeddings.items():
+        similarities[course] = cosine_similarity([query_embedding], [embedding])[0][0]
+    
+    # Get the course with the highest similarity score
+    most_relevant_course = max(similarities, key=similarities.get)
+    
+    return course_info[most_relevant_course], most_relevant_course
 
-def get_clothing_suggestions(weather_info):
-    """Function to call OpenAI's API for clothing suggestions based on the weather."""
-    prompt = (f"The current weather in {weather_info['location']} is {weather_info['temperature']}°C, "
-              f"with a 'feels like' temperature of {weather_info['feels_like']}°C. "
-              f"The humidity is {weather_info['humidity']}%. "
-              f"Based on this, what kind of clothing would you suggest for someone traveling today?")
-
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # Specify model as per new API
+def get_llm_response(course_info, course_name):
+    """Invoke the LLM with the course information from the vector search."""
+    prompt = (f"I am a student asking about {course_name}. "
+              f"The information I have is: {course_info}. "
+              f"Can you summarize this information and give me additional insights?")
+    
+    response = client.chat_completions.create(
+        model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that gives weather-based clothing advice in one line. Provide clothing suggestions and advice on whether it’s a good day for a picnic."},
+            {"role": "system", "content": "You are a helpful assistant that provides information on courses and clubs."},
             {"role": "user", "content": prompt}
         ],
-        max_tokens=100
+        max_tokens=150
     )
-    # Extract the text from the completion response
+    
     return response.choices[0].message.content.strip()
 
-def llm_tool(location):
-    """Function to get weather details."""
-    if not location:
-        location = "Syracuse, NY"  # Default location
-    
-    weather_data = get_weather(location)
-    
-    if 'error' in weather_data:
-        return f"Error: {weather_data['error']}"
-    
-    return (f"The current weather in {weather_data['location']}:\n"
-            f"Temperature: {weather_data['temperature']}°C\n"
-            f"Feels Like: {weather_data['feels_like']}°C\n"
-            f"Min Temp: {weather_data['temp_min']}°C\n"
-            f"Max Temp: {weather_data['temp_max']}°C\n"
-            f"Humidity: {weather_data['humidity']}%\n"
-            f"Conditions: {weather_data['weather']}")
-
 # Streamlit UI
-st.title("Weather and Clothing Suggestion Bot")
+st.title("Short-Term Memory Chatbot")
 
-# Get user input for location
-user_input = st.text_input("Enter a city (leave blank for default - Syracuse, NY):")
+# Get user input
+user_query = st.text_input("Ask about a course (e.g., 'Tell me about Machine Learning'):")
 
-# Create two buttons side by side
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("Get Weather Suggestion", key="key1"):
-        suggestion = llm_tool(user_input)
-        st.write(suggestion)
-
-with col2:
-    if st.button("Get Clothing Suggestion", key="key2"):
-        weather_data = get_weather(user_input)
-        if 'error' not in weather_data:
-            clothing_suggestion = get_clothing_suggestions(weather_data)
-            st.write(f"Weather Info:\n{llm_tool(user_input)}")
-            st.write(f"\nClothing Suggestion: {clothing_suggestion}")
-        else:
-            st.write(f"Error: {weather_data['error']}")
+if st.button("Get Information"):
+    if user_query:
+        # Perform vector search to get the relevant course info
+        relevant_info, relevant_course = vector_search(user_query)
+        
+        # Call LLM with the results of vector search
+        llm_response = get_llm_response(relevant_info, relevant_course)
+        
+        # Display results in the app
+        st.write(f"Relevant course: {relevant_course}")
+        st.write(f"Course Information: {relevant_info}")
+        st.write(f"LLM Response: {llm_response}")
+    else:
+        st.write("Please enter a query.")
