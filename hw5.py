@@ -46,7 +46,7 @@ def get_llm_response(course_info, course_name):
               f"Can you summarize this information and give me additional insights?")
     
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-3.5-turbo",  # Ensure you're using the correct model
         messages=[
             {"role": "system", "content": "You are a helpful assistant that provides information on courses and clubs."},
             {"role": "user", "content": prompt}
@@ -54,7 +54,7 @@ def get_llm_response(course_info, course_name):
         max_tokens=150
     )
     
-    return response.choices[0].message["content"].strip()
+    return response['choices'][0]['message']['content'].strip()  # Updated way to access response content
 
 # Streamlit UI
 st.title("Short-Term Memory Chatbot")
