@@ -4,8 +4,11 @@ import requests
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Ensure 'scikit-learn' is installed using pip:
+# pip install scikit-learn
+
 # Set API Keys from Streamlit secrets
-client = openai.OpenAI(api_key=st.secrets["openai"])
+openai.api_key = st.secrets["openai"]
 
 # Placeholder for your vector embeddings (for courses or clubs)
 course_info = {
@@ -42,7 +45,7 @@ def get_llm_response(course_info, course_name):
               f"The information I have is: {course_info}. "
               f"Can you summarize this information and give me additional insights?")
     
-    response = client.chat_completions.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "You are a helpful assistant that provides information on courses and clubs."},
@@ -51,7 +54,7 @@ def get_llm_response(course_info, course_name):
         max_tokens=150
     )
     
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message["content"].strip()
 
 # Streamlit UI
 st.title("Short-Term Memory Chatbot")
