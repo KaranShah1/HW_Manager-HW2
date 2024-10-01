@@ -43,7 +43,6 @@ def extract_html_from_zip(zip_path):
 
 # Function to create the ChromaDB collection
 
-
 def create_hw4_collection():
     if 'HW_URL_Collection' not in st.session_state:
         # Set up the ChromaDB client
@@ -96,7 +95,6 @@ def create_hw4_collection():
 
 # Function to query the vector database
 
-
 def query_vector_db(collection, query):
     ensure_openai_client()  # We'll use OpenAI for embeddings regardless of the chosen LLM
     try:
@@ -115,7 +113,6 @@ def query_vector_db(collection, query):
         return [], []
 
 # Function to get chatbot response using the selected LLM
-
 
 def get_chatbot_response(query, context, conversation_memory, model):
     system_message = "You are an AI assistant with knowledge from specific documents. Use the provided context to answer the user's questions. If the information is not in the context, say you don't know based on the available information. Maintain consistency with your previous answers."
@@ -141,8 +138,6 @@ def get_chatbot_response(query, context, conversation_memory, model):
             st.error(f"Error getting GPT-4 response: {str(e)}")
             return None
 
-  
-
     elif model == "Google Gemini":
         ensure_google_ai_client()
         prompt = f"{system_message}\n\nContext: {context}\n\nConversation history:\n{condensed_history}\n\nHuman: {query}\nAI:"
@@ -154,7 +149,6 @@ def get_chatbot_response(query, context, conversation_memory, model):
         except Exception as e:
             st.error(f"Error getting Gemini response: {str(e)}")
             return None
-
 
 def main():
     # Initialize session state
@@ -170,7 +164,7 @@ def main():
     # Sidebar for model selection
     st.sidebar.title("Model Selection")
     selected_model = st.sidebar.radio(
-        "Choose an LLM:", ["OpenAI GPT-4", "Cohere", "Google Gemini"],
+        "Choose an LLM:", ["OpenAI GPT-4", "Cohere", "Google Gemini"]
     )
 
     # Page content
@@ -222,8 +216,7 @@ def main():
                             full_response += chunk.choices[0].delta.content
                             response_placeholder.markdown(full_response + "▌")
 
-                            #CHECK
-                if selected_model == "Cohere":
+                elif selected_model == "Cohere":
                     for chunk in response_stream:
                         chunk_type = getattr(chunk, 'type', None)
 
@@ -241,43 +234,25 @@ def main():
                         elif chunk_type == 'message_delta':
                             if hasattr(chunk, 'delta') and hasattr(chunk.delta, 'content'):
                                 for content_block in chunk.delta.content:
-                                    if content_block.type == 'text':
-                                        full_response += content_block.text
-                                        response_placeholder.markdown(
-                                            full_response + "▌")
-                        elif chunk_type == 'message_stop':
-                            break  # End of the message
-                        else:
-                            st.write(f"Unhandled chunk type: {chunk_type}")
-                            st.write(f"Chunk attributes: {dir(chunk)}")
+                                    full_response += content_block
+                                    response_placeholder.markdown(
+                                        full_response + "▌")
 
-                    response_placeholder.markdown(full_response)
                 elif selected_model == "Google Gemini":
                     for chunk in response_stream:
-                        full_response += chunk.text
-                        response_placeholder.markdown(full_response + "▌")
-                response_placeholder.markdown(full_response)
+                        if hasattr(chunk, 'type') and chunk.type == 'content_block_delta':
+                            full_response += chunk.content
+                            response_placeholder.markdown(full_response + "▌")
 
-            st.session_state.chat_history.append(
-                {"role": "user", "content": user_input})
-            st.session_state.chat_history.append(
-                {"role": "assistant", "content": full_response})
+                response_placeholder.markdown(full_response)  # Final display
 
-            st.session_state.conversation_memory.append({
-                "question": user_input,
-                "answer": full_response
-            })
+                # Save the chat in the history
+                st.session_state.chat_history.append(
+                    {"role": "assistant", "content": full_response})
 
-            with st.expander("Relevant documents used"):
-                for doc in relevant_docs:
-                    st.write(f"- {doc}")
+                # Update conversation memory
+                st.session_state.conversation_memory.append(
+                    {"question": user_input, "answer": full_response})
 
-    elif not st.session_state.system_ready:
-        st.info("The system is still preparing. Please wait...")
-    else:
-        st.error(
-            "Failed to create or load the document collection. Please check the zip file and try again.")
-
-
-if __name__ == "_main_":
+if __name__ == "__main__":
     main()
