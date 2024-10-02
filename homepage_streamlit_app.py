@@ -9,7 +9,7 @@ with st.sidebar:
     selected_page = option_menu(
         "HW Manager",
         ["First Homework", "Second Homework", "Third Homework", "Third Homework Retry", "Fourth Homework", "Fourth Homework Retry","Fifth Homework", "fourthh"],
-        icons=['book', 'book', 'book', 'book', 'book'],
+        icons=['book', 'book', 'book', 'book', 'book','book','book','book'],
         menu_icon="cast", 
         default_index=0,
     )
@@ -45,12 +45,12 @@ elif selected_page == "Fourth Homework Retry":
     # Execute the hw4.py code
     exec(open("hw4_retry.py").read())
 
-elif selected_page == "fourthh":
-    st.title("HW - 5")
-    # Execute the hw5.py code
-    exec(open("hw4_last.py").read())
-
 elif selected_page == "Fifth Homework":
     st.title("HW - 5")
     # Execute the hw5.py code
     exec(open("hw5.py").read())
+
+elif selected_page == "fourthh":
+    st.title("HW - 5")
+    # Execute the hw5.py code
+    exec(open("hw4_last.py").read())
