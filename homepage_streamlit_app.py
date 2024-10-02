@@ -49,8 +49,3 @@ elif selected_page == "Fifth Homework":
     st.title("HW - 5")
     # Execute the hw5.py code
     exec(open("hw5.py").read())
-
-elif selected_page == "fourthh":
-    st.title("HW - 5")
-    # Execute the hw5.py code
-    exec(open("hw4_last.py").read())
