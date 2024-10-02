@@ -201,10 +201,7 @@ def main():
     # Sidebar for model selection
     st.sidebar.title("Model Selection")
     selected_model = st.sidebar.radio(
-        "Choose an LLM:", ("OpenAI GPT-4", "Anthropic Claude", "Google Gemini"))
-
-    # Page content
-    st.title("HW 4 - iSchool Chatbot")
+        "Choose an LLM:", ("OpenAI GPT-4", "Cohere", "Google Gemini"))
 
     # Check if the system is ready, if not, prepare it
     if not st.session_state.system_ready:
