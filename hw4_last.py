@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 import tiktoken
 import google.generativeai as genai
-
+import zipfile
 
 # Function to read webpage content from a URL
 def read_webpage_from_url(url):
@@ -189,15 +189,25 @@ def setup_vectordb():
             metadata={"hnsw:space": "cosine", "hnsw:M": 32}
         )
         
-        su_orgs_path = os.path.join(os.getcwd(), "HWs/su_orgs/")
-        html_files = [f for f in os.listdir(su_orgs_path) if f.endswith('.html')]
+        # su_orgs_path = os.path.join(os.getcwd(), "HWs/su_orgs/")
+        # html_files = [f for f in os.listdir(su_orgs_path) if f.endswith('.html')]
         
-        for html_file in html_files:
-            file_path = os.path.join(su_orgs_path, html_file)
-            with open(file_path, 'r', encoding='utf-8') as file:
-                soup = BeautifulSoup(file, 'html.parser')
-                text = soup.get_text(separator=' ', strip=True)
-                collection = add_to_collection(collection, text, html_file)
+        # for html_file in html_files:
+        #     file_path = os.path.join(su_orgs_path, html_file)
+        #     with open(file_path, 'r', encoding='utf-8') as file:
+        #         soup = BeautifulSoup(file, 'html.parser')
+        #         text = soup.get_text(separator=' ', strip=True)
+        #         collection = add_to_collection(collection, text, html_file)
+
+        # Define the path to the zip file
+        zip_path = os.path.join(os.getcwd(), "su_orgs.zip")
+        if not os.path.exists(zip_path):
+            st.error(f"Zip file not found: {zip_path}")
+            return None
+
+        # Extract HTML files from zip
+        html_files = extract_html_from_zip(zip_path)
+
         
         st.success(f"VectorDB setup complete with {len(html_files)} HTML files!")
     else:
