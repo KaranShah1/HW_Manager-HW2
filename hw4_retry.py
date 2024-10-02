@@ -235,8 +235,6 @@ def query_vectordb(query, k=3):
         st.error("VectorDB not set up. Please set up the VectorDB first.")
         return None
 
-st.title("iSchool Student Organizations Chatbot")
-
 # Set up VectorDB
 setup_vectordb()
 
