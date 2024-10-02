@@ -1,278 +1,190 @@
+import sys
 import streamlit as st
-from openai import OpenAI
-from bs4 import BeautifulSoup
 import os
-from PyPDF2 import PdfReader
-
+import zipfile
+import tempfile
+from collections import deque
+from bs4 import BeautifulSoup
 
 # Workaround for sqlite3 issue in Streamlit Cloud
 __import__('pysqlite3')
-import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
+# Import libraries for AI clients
+import openai
+import google.generativeai as genai
 import chromadb
+from cohere import CohereClient
 
-
-# Function to ensure the OpenAI client is initialized
-def ensure_openai_client():
+# Helper Functions for Client Initialization
+def initialize_clients():
+    """Ensure all required AI clients are initialized."""
     if 'openai_client' not in st.session_state:
-        # Get the API key from Streamlit secrets
-        api_key = st.secrets["openai"]
-        # Initialize the OpenAI client and store it in session state
-        st.session_state.openai_client = OpenAI(api_key=api_key)
+        openai.api_key = st.secrets["openai"]
+        st.session_state.openai_client = openai
+    if 'google_ai_client' not in st.session_state:
+        genai.configure(api_key=st.secrets["gemini"])
+        st.session_state.google_ai_client = genai
+    if 'cohere_client' not in st.session_state:
+        api_key = st.secrets["cohere"]
+        st.session_state.cohere_client = CohereClient(api_key)
 
+# Function to Extract HTML Files from ZIP
+def extract_html_from_zip(zip_path):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
 
-# Function to create the ChromaDB collection
+        html_files = {}
+        for root, dirs, files in os.walk(temp_dir):
+            for file in files:
+                if file.endswith('.html'):
+                    file_path = os.path.join(root, file)
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        html_files[file] = f.read()
+    return html_files
+
+# Function to Create ChromaDB Collection
 def create_hw4_collection():
-    if 'Hw4_vectorDB' not in st.session_state:
-        # Set up the ChromaDB client
+    if 'HW_URL_Collection' not in st.session_state:
         persist_directory = os.path.join(os.getcwd(), "chroma_db")
         client = chromadb.PersistentClient(path=persist_directory)
-        collection = client.get_or_create_collection("hw4Collection")
+        collection = client.get_or_create_collection("HW_URL_Collection")
 
-        ensure_openai_client()
-
-#START TEST
-# Define the directory containing the HTML files
-        html_dir = os.path.join(os.getcwd(), "su_orgs")
-        if not os.path.exists(html_dir):
-            st.error(f"Directory not found: {html_dir}")
+        zip_path = os.path.join(os.getcwd(), "su_orgs.zip")
+        if not os.path.exists(zip_path):
+            st.error(f"Zip file not found: {zip_path}")
             return None
 
-        # Process each HTML file in the directory
-        for filename in os.listdir(html_dir):
-            if filename.endswith(".html"):
-                filepath = os.path.join(html_dir, filename)
-                try:
-                    # Extract text from the HTML
-                    with open(filepath, "r", encoding="utf-8") as file:
-                        html_content = file.read()
-                        soup = BeautifulSoup(html_content, 'html.parser')
+        html_files = extract_html_from_zip(zip_path)
+
+        if collection.count() == 0:
+            with st.spinner("Processing content and preparing the system..."):
+                for filename, content in html_files.items():
+                    try:
+                        soup = BeautifulSoup(content, 'html.parser')
                         text = soup.get_text(separator=' ', strip=True)
+                        response = st.session_state.openai_client.Embedding.create(input=text)
+                        embedding = response['data'][0]['embedding']
+                        collection.add(
+                            documents=[text],
+                            metadatas=[{"filename": filename}],
+                            ids=[filename],
+                            embeddings=[embedding]
+                        )
+                    except Exception as e:
+                        st.error(f"Error processing {filename}: {str(e)}")
+        else:
+            st.info("Using existing vector database.")
+        st.session_state.HW_URL_Collection = collection
+    return st.session_state.HW_URL_Collection
 
-                    # Generate embeddings for the extracted text
-                    response = st.session_state.openai_client.embeddings.create(
-                        input=text, model="text-embedding-3-small"
-                    )
-                    embedding = response.data[0].embedding
-
-                    # Add the document to ChromaDB
-                    collection.add(
-                        documents=[text],
-                        metadatas=[{"filename": filename}],
-                        ids=[filename],
-                        embeddings=[embedding]
-                    )
-                except Exception as e:
-                    st.error(f"Error processing {filename}: {str(e)}")
-
-        # Store the collection in session state
-        st.session_state.Hw4_vectorDB = collection
-
-    return st.session_state.Hw4_vectorDB
-
-
-
-#END TEST
-# Function to query the vector database
+# Function to Query Vector Database
 def query_vector_db(collection, query):
-    ensure_openai_client()
     try:
-        # Generate embedding for the query
-        response = st.session_state.openai_client.embeddings.create(
-            input=query, model="text-embedding-3-small"
-        )
-        query_embedding = response.data[0].embedding
+        response = st.session_state.openai_client.Embedding.create(input=query)
+        query_embedding = response['data'][0]['embedding']
 
-        # Query the ChromaDB collection
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            n_results=3
-        )
+        results = collection.query(query_embeddings=[query_embedding], n_results=3)
         return results['documents'][0], [result['filename'] for result in results['metadatas'][0]]
     except Exception as e:
         st.error(f"Error querying the database: {str(e)}")
         return [], []
 
+# Function to Get Chatbot Response Based on Selected Model
+def get_chatbot_response(query, context, conversation_memory, selected_model):
+    condensed_history = "\n".join([f"Human: {item['question']}\nAI: {item['answer']}" for item in conversation_memory])
 
-# Function to get chatbot response using the selected LLM
-def get_chatbot_response(query, context, llm_provider, client):
-    prompt = f"""You are an AI assistant with knowledge from specific documents. Use the following context to answer the user's question. If the information is not in the context, say you don't know based on the available information.
+    prompt = f"Context: {context}\nConversation history:\n{condensed_history}\nHuman: {query}\nAI:"
+    
+    if selected_model == "OpenAI GPT-4":
+        messages = [
+            {"role": "system", "content": "You are an AI assistant."},
+            {"role": "user", "content": prompt}
+        ]
+        try:
+            response = st.session_state.openai_client.ChatCompletion.create(model="gpt-4", messages=messages)
+            return response['choices'][0]['message']['content']
+        except Exception as e:
+            st.error(f"Error with GPT-4: {str(e)}")
+    
+    elif selected_model == "Cohere":
+        try:
+            response = st.session_state.cohere_client.generate(prompt=prompt, model="claude-3-opus-20240229", max_tokens=1024)
+            return response.text
+        except Exception as e:
+            st.error(f"Error with Cohere: {str(e)}")
+    
+    elif selected_model == "Google Gemini":
+        try:
+            model = st.session_state.google_ai_client.GenerativeModel('gemini-1.0-pro')
+            response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            st.error(f"Error with Gemini: {str(e)}")
 
-Context:
-{context}
+# Main Streamlit App
+def main():
+    initialize_clients()
 
-User Question: {query}
+    # Initialize session state for chat and system
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+    if 'conversation_memory' not in st.session_state:
+        st.session_state.conversation_memory = deque(maxlen=5)
+    if 'system_ready' not in st.session_state:
+        st.session_state.system_ready = False
+    if 'collection' not in st.session_state:
+        st.session_state.collection = None
 
-Answer:"""
+    # Sidebar for model selection
+    st.sidebar.title("Model Selection")
+    selected_model = st.sidebar.radio("Choose an LLM:", ("OpenAI GPT-4", "Cohere", "Google Gemini"))
 
-    if llm_provider == 'OpenAI GPT-4O-Mini' or llm_provider == 'OpenAI GPT-4O':
-        model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=150
-        )
-        return response.choices[0].message.content
-    elif llm_provider == 'Gemini':
-        response = client.generate_content(
-            contents=[{"role": "user", "parts": [{"text": prompt}]}],
-            generation_config=genai.types.GenerationConfig(
-                temperature=0,
-                max_output_tokens=150,
-            ),
-        )
-        return response.text
-    else:  # Cohere
-        response = client.chat(
-            model='command-r',
-            message=prompt,
-            temperature=0,       
-            max_tokens=150
-        )
-        return response.text
+    st.title("HW 4 - iSchool Chatbot")
 
+    # System Preparation
+    if not st.session_state.system_ready:
+        with st.spinner("Preparing system..."):
+            st.session_state.collection = create_hw4_collection()
+            if st.session_state.collection:
+                st.session_state.system_ready = True
+                st.success("AI ChatBot is Ready!!!")
+            else:
+                st.error("Failed to create or load the collection.")
 
-# Function to summarize the conversation based on the selected LLM
-def generate_conversation_summary(client, messages, llm_provider):
-    if llm_provider == 'Gemini':
-        msgs = []
-        for msg in messages:
-            role = "user" if msg["role"] == "user" else "model"
-            msgs.append({"role": role, "parts": [{"text": msg["content"]}]})
-        prompt = {"role": "user", "parts": [{"text": "Summarize the key points of this conversation concisely:"}]}
-        response = client.generate_content(
-            contents=[prompt, *msgs],
-            generation_config=genai.types.GenerationConfig(
-                temperature=0,
-                max_output_tokens=150,
-            ),
-        )
-        return response.text
-    elif "OpenAI" in llm_provider:
-        summary_prompt = "Summarize the key points of this conversation concisely:"
-        for msg in messages:
-            summary_prompt += f"\n{msg['role']}: {msg['content']}"
-        response = client.chat.completions.create(
-            model="gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o",
-            messages=[{"role": "user", "content": summary_prompt}],
-            max_tokens=150
-        )
-        return response.choices[0].message.content
-    else:  # Cohere
-        summary_prompt = "Summarize the key points of this conversation concisely:"
-        chat_history = []
-        for msg in messages:
-            chat_history.append({"role": msg['role'], "message": msg['content']})
-            summary_prompt += f"\n{msg['role']}: {msg['content']}"
-        response = client.chat(
-            model='command-r',
-            message=summary_prompt,
-            chat_history=chat_history,
-            temperature=0,       
-            max_tokens=150
-        )
-        return response.text
+    # Chat Interface
+    if st.session_state.system_ready and st.session_state.collection:
+        st.subheader(f"Chat with the AI (Using {selected_model})")
 
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-# API key verification
-# Function to verify OpenAI API key
-def verify_openai_key(api_key): #Verifies the OpenAI API key by trying to list available models. Returns a client object if successful.
-    try:
-        client = OpenAI(api_key=api_key)
-        client.models.list()
-        return client, True, "API key is valid"
-    except Exception as e:
-        return None, False, str(e)
+        user_input = st.chat_input("Ask a question:")
 
-# Function to generate summary using OpenAI - Sends a request to OpenAI's chat model and returns the stream of responses. If an error occurs, it displays the error in the Streamlit app
-def generate_openai_response(client, messages, model): 
-    try:
-        stream = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            stream=True,
-        )
-        return stream
-    except Exception as e:
-        st.error(f"Error generating response: {e}", icon="❌")
-        return None
+        if user_input:
+            with st.chat_message("user"):
+                st.markdown(user_input)
 
-def verify_cohere_key(api_key): #Verifies the Cohere API key by running a small prompt and checking if the client works.
-    try:
-        client = cohere.Client(api_key)
-        client.generate(prompt="Hello", max_tokens=5)
-        return client, True, "API key is valid"
-    except Exception as e:
-        return None, False, str(e)
+            combined_query = f"{' '.join([exchange['question'] for exchange in st.session_state.conversation_memory])} {user_input}"
+            relevant_texts, relevant_docs = query_vector_db(st.session_state.collection, combined_query)
+            context = "\n".join(relevant_texts)
 
+            response = get_chatbot_response(user_input, context, st.session_state.conversation_memory, selected_model)
 
-# Initialize session state for chat history, system readiness, and collection
-if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = []
-if 'system_ready' not in st.session_state:
-    st.session_state.system_ready = False
-if 'collection' not in st.session_state:
-    st.session_state.collection = None
+            with st.chat_message("assistant"):
+                st.markdown(response)
 
-# Sidebar to select the LLM provider
-llm_provider = st.sidebar.selectbox(
-    "Select LLM provider",
-    ["OpenAI GPT-4O", "OpenAI GPT-4O-Mini", "Gemini", "Cohere"]
-)
+            st.session_state.chat_history.append({"role": "user", "content": user_input})
+            st.session_state.chat_history.append({"role": "assistant", "content": response})
+            st.session_state.conversation_memory.append({"question": user_input, "answer": response})
 
+            with st.expander("Relevant documents used"):
+                for doc in relevant_docs:
+                    st.write(f"- {doc}")
+    else:
+        st.error("System not ready. Please check the setup.")
 
-
-# Page content
-# st.title("Lab 4 - Document Chatbot")
-
-# Check if the system is ready, if not, prepare it
-if not st.session_state.system_ready:
-    # Show a spinner while processing documents
-    with st.spinner("Processing documents and preparing the system..."):
-        st.session_state.collection = create_hw4_collection()
-        if st.session_state.collection:
-            # Set the system as ready and show a success message
-            st.session_state.system_ready = True
-            st.success("AI ChatBot is Ready!!!")
-        else:
-            st.error("Failed to create or load the document collection. Please check the file path and try again.")
-
-# Only show the chat interface if the system is ready
-if st.session_state.system_ready and st.session_state.collection:
-    st.subheader("Chat with the AI Assistant")
-
-    # Display chat history
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    # User input
-    user_input = st.chat_input("Ask a question about the documents:")
-
-    if user_input:
-        # Display user message
-        with st.chat_message("user"):
-            st.markdown(user_input)
-
-        # Add user message to chat history
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-
-        # Query the vector database and get the relevant context
-        context, doc_names = query_vector_db(st.session_state.collection, user_input)
-
-        # Get the chatbot's response
-        response = get_chatbot_response(user_input, context, llm_provider, client)
-
-        # Display chatbot's response
-        with st.chat_message("assistant"):
-            st.markdown(response)
-
-        # Add chatbot's response to chat history
-        st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-    # Summarize the conversation
-    if st.button("Summarize Conversation"):
-        summary = generate_conversation_summary(client, st.session_state.chat_history, llm_provider)
-        st.subheader("Conversation Summary")
-        st.write(summary)
+if __name__ == "__main__":
+    main()
