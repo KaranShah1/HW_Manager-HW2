@@ -344,15 +344,3 @@ if prompt := st.chat_input("What would you like to know about iSchool student or
                 message_placeholder.markdown(full_response)
     
     st.session_state.messages.append({"role": "system", "content": full_response})
-
-# Assuming relevant_docs is a list containing the documents used
-st.session_state.conversation_memory.append({ 
-    "question": user_input,
-    "answer": full_response,
-    "relevant_docs": relevant_docs  # Add relevant documents to the memory
-})
-
-# Displaying the relevant documents in an expander
-with st.expander("Relevant documents used"):
-    for doc in relevant_docs:
-        st.write(f"- {doc}")
