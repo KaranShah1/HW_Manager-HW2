@@ -23,9 +23,9 @@ def ensure_openai_client():
 
 # Function to ensure the Anthropic client is initialize
 
-def ensure_anthropic_client():
+def ensure_cohere_client():
     if 'anthropic_client' not in st.session_state:
-        api_key = st.secrets["claude"]
+        api_key = st.secrets["cohere"]
         st.session_state.anthropic_client = Anthropic(api_key=api_key)
 
 # Function to ensure the Google AI client is initialized
@@ -154,8 +154,8 @@ def get_chatbot_response(query, context, conversation_memory, model):
             st.error(f"Error getting GPT-4 response: {str(e)}")
             return None
 
-    elif model == "Anthropic Claude":
-        ensure_anthropic_client()
+    elif model == "Cohere":
+        ensure_coherelient()
         messages = [
             {"role": "user", "content": f"Here's some context information: {context}\n\nConversation history:\n{condensed_history}"},
             {"role": "assistant", "content": "I understand. I'll use this context and conversation history to answer questions consistently. What would you like to know?"},
