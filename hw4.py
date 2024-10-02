@@ -14,7 +14,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import openai
 import google.generativeai as genai
 import chromadb
-from cohere import CohereClient
+import cohere  # Correct import for Cohere
 
 # Helper Functions for Client Initialization
 def initialize_clients():
@@ -27,7 +27,7 @@ def initialize_clients():
         st.session_state.google_ai_client = genai
     if 'cohere_client' not in st.session_state:
         api_key = st.secrets["cohere"]
-        st.session_state.cohere_client = CohereClient(api_key)
+        st.session_state.cohere_client = cohere.Client(api_key)  # Corrected client initialization
 
 # Function to Extract HTML Files from ZIP
 def extract_html_from_zip(zip_path):
