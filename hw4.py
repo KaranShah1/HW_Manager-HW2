@@ -19,14 +19,14 @@ import chromadb
 
 def ensure_openai_client():
     if 'openai_client' not in st.session_state:
-        api_key = st.secrets["openai_api_key"]
+        api_key = st.secrets["openai"]
         st.session_state.openai_client = OpenAI(api_key=api_key)
 
 # Function to ensure the Anthropic client is initialize
 
 def ensure_anthropic_client():
     if 'anthropic_client' not in st.session_state:
-        api_key = st.secrets["claude_api_key"]
+        api_key = st.secrets["cohere"]
         st.session_state.anthropic_client = Anthropic(api_key=api_key)
 
 # Function to ensure the Google AI client is initialized
@@ -34,7 +34,7 @@ def ensure_anthropic_client():
 
 def ensure_google_ai_client():
     if 'google_ai_client' not in st.session_state:
-        api_key = st.secrets["gemini_api_key"]
+        api_key = st.secrets["gemini"]
         genai.configure(api_key=api_key)
         st.session_state.google_ai_client = genai
 
