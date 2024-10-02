@@ -160,7 +160,7 @@ def generate_conversation_summary(client, messages, llm_provider):
 
 # Vector DB functions
 def add_to_collection(collection, text, filename):
-    openai_client = OpenAI(api_key = st.secrets['key1'])
+    openai_client = OpenAI(api_key = st.secrets['openai'])
     response = openai_client.embeddings.create(
         input=text,
         model="text-embedding-3-small"
@@ -209,7 +209,7 @@ def setup_vectordb():
 def query_vectordb(query, k=3):
     if 'HW4_vectorDB' in st.session_state:
         collection = st.session_state.HW4_vectorDB
-        openai_client = OpenAI(api_key = st.secrets['key1'])
+        openai_client = OpenAI(api_key = st.secrets['openai'])
         response = openai_client.embeddings.create(
             input=query,
             model="text-embedding-3-small"
@@ -246,14 +246,14 @@ memory_type = st.sidebar.radio(
 
 # API key verification
 if "OpenAI" in llm_provider:
-    openai_api_key = st.secrets['key1']
+    openai_api_key = st.secrets['openai']
     client, is_valid, message = verify_openai_key(openai_api_key)
     model = "gpt-4o-mini" if llm_provider == "OpenAI GPT-4O-Mini" else "gpt-4o"
 elif "Cohere" in llm_provider:
-    cohere_api_key = st.secrets['cohere_key']
+    cohere_api_key = st.secrets['cohere']
     client, is_valid, message = verify_cohere_key(cohere_api_key)
 else:
-    gemini_api_key = st.secrets['gemini_key']
+    gemini_api_key = st.secrets['gemini']
     client, is_valid, message = verify_gemini_key(gemini_api_key)
 
 if is_valid:
