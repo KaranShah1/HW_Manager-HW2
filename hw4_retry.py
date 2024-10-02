@@ -1,6 +1,7 @@
 import sys
 import streamlit as st
 from openai import OpenAI
+from anthropic import Anthropic
 import google.generativeai as genai
 from bs4 import BeautifulSoup
 import os
@@ -9,7 +10,7 @@ import tempfile
 from collections import deque
 
 # Workaround for sqlite3 issue in Streamlit Cloud
-__import__('pysqlite3')
+_import_('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import chromadb
@@ -21,11 +22,24 @@ def ensure_openai_client():
         api_key = st.secrets["openai"]
         st.session_state.openai_client = OpenAI(api_key=api_key)
 
+# Function to ensure the Anthropic client is initialize
+
+def ensure_anthropic_client():
+    if 'anthropic_client' not in st.session_state:
+        api_key = st.secrets["claude"]
+        st.session_state.anthropic_client = Anthropic(api_key=api_key)
+
+# Function to ensure the Google AI client is initialized
+
+
 def ensure_google_ai_client():
     if 'google_ai_client' not in st.session_state:
         api_key = st.secrets["gemini"]
         genai.configure(api_key=api_key)
         st.session_state.google_ai_client = genai
+
+# Function to extract HTML files from zip
+
 
 def extract_html_from_zip(zip_path):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -42,6 +56,7 @@ def extract_html_from_zip(zip_path):
     return html_files
 
 # Function to create the ChromaDB collection
+
 
 def create_hw4_collection():
     if 'HW_URL_Collection' not in st.session_state:
@@ -95,6 +110,7 @@ def create_hw4_collection():
 
 # Function to query the vector database
 
+
 def query_vector_db(collection, query):
     ensure_openai_client()  # We'll use OpenAI for embeddings regardless of the chosen LLM
     try:
@@ -113,6 +129,7 @@ def query_vector_db(collection, query):
         return [], []
 
 # Function to get chatbot response using the selected LLM
+
 
 def get_chatbot_response(query, context, conversation_memory, model):
     system_message = "You are an AI assistant with knowledge from specific documents. Use the provided context to answer the user's questions. If the information is not in the context, say you don't know based on the available information. Maintain consistency with your previous answers."
@@ -138,6 +155,26 @@ def get_chatbot_response(query, context, conversation_memory, model):
             st.error(f"Error getting GPT-4 response: {str(e)}")
             return None
 
+    elif model == "Anthropic Claude":
+        ensure_anthropic_client()
+        messages = [
+            {"role": "user", "content": f"Here's some context information: {context}\n\nConversation history:\n{condensed_history}"},
+            {"role": "assistant", "content": "I understand. I'll use this context and conversation history to answer questions consistently. What would you like to know?"},
+            {"role": "user", "content": query}
+        ]
+        try:
+            response = st.session_state.anthropic_client.messages.create(
+                model="claude-3-opus-20240229",
+                system=system_message,
+                messages=messages,
+                max_tokens=1024,
+                stream=True
+            )
+            return response
+        except Exception as e:
+            st.error(f"Error getting Claude response: {str(e)}")
+            return None
+
     elif model == "Google Gemini":
         ensure_google_ai_client()
         prompt = f"{system_message}\n\nContext: {context}\n\nConversation history:\n{condensed_history}\n\nHuman: {query}\nAI:"
@@ -149,6 +186,7 @@ def get_chatbot_response(query, context, conversation_memory, model):
         except Exception as e:
             st.error(f"Error getting Gemini response: {str(e)}")
             return None
+
 
 def main():
     # Initialize session state
@@ -164,11 +202,10 @@ def main():
     # Sidebar for model selection
     st.sidebar.title("Model Selection")
     selected_model = st.sidebar.radio(
-        "Choose an LLM:", ["OpenAI GPT-4", "Cohere", "Google Gemini"]
-    )
+        "Choose an LLM:", ("OpenAI GPT-4", "Anthropic Claude", "Google Gemini"))
 
     # Page content
-    st.title("HW 4 - Retry")
+    st.title("HW 4 - iSchool Chatbot")
 
     # Check if the system is ready, if not, prepare it
     if not st.session_state.system_ready:
@@ -215,8 +252,7 @@ def main():
                         if chunk.choices[0].delta.content is not None:
                             full_response += chunk.choices[0].delta.content
                             response_placeholder.markdown(full_response + "▌")
-
-                elif selected_model == "Cohere":
+                if selected_model == "Anthropic Claude":
                     for chunk in response_stream:
                         chunk_type = getattr(chunk, 'type', None)
 
@@ -234,25 +270,43 @@ def main():
                         elif chunk_type == 'message_delta':
                             if hasattr(chunk, 'delta') and hasattr(chunk.delta, 'content'):
                                 for content_block in chunk.delta.content:
-                                    full_response += content_block
-                                    response_placeholder.markdown(
-                                        full_response + "▌")
+                                    if content_block.type == 'text':
+                                        full_response += content_block.text
+                                        response_placeholder.markdown(
+                                            full_response + "▌")
+                        elif chunk_type == 'message_stop':
+                            break  # End of the message
+                        else:
+                            st.write(f"Unhandled chunk type: {chunk_type}")
+                            st.write(f"Chunk attributes: {dir(chunk)}")
 
+                    response_placeholder.markdown(full_response)
                 elif selected_model == "Google Gemini":
                     for chunk in response_stream:
-                        if hasattr(chunk, 'type') and chunk.type == 'content_block_delta':
-                            full_response += chunk.content
-                            response_placeholder.markdown(full_response + "▌")
+                        full_response += chunk.text
+                        response_placeholder.markdown(full_response + "▌")
+                response_placeholder.markdown(full_response)
 
-                response_placeholder.markdown(full_response)  # Final display
+            st.session_state.chat_history.append(
+                {"role": "user", "content": user_input})
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": full_response})
 
-                # Save the chat in the history
-                st.session_state.chat_history.append(
-                    {"role": "assistant", "content": full_response})
+            st.session_state.conversation_memory.append({
+                "question": user_input,
+                "answer": full_response
+            })
 
-                # Update conversation memory
-                st.session_state.conversation_memory.append(
-                    {"question": user_input, "answer": full_response})
+            with st.expander("Relevant documents used"):
+                for doc in relevant_docs:
+                    st.write(f"- {doc}")
 
-if __name__ == "__main__":
+    elif not st.session_state.system_ready:
+        st.info("The system is still preparing. Please wait...")
+    else:
+        st.error(
+            "Failed to create or load the document collection. Please check the zip file and try again.")
+
+
+if _name_ == "_main_":
     main()
