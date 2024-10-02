@@ -307,5 +307,5 @@ def main():
             "Failed to create or load the document collection. Please check the zip file and try again.")
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
