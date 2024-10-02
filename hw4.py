@@ -110,7 +110,7 @@ def create_hw4_collection():
 # Function to query the vector database
 
 
-def query_vector_db(collection, query):
+def HW4_vectorDB(collection, query):
     ensure_openai_client()  # We'll use OpenAI for embeddings regardless of the chosen LLM
     try:
         response = st.session_state.openai_client.embeddings.create(
@@ -233,7 +233,7 @@ def main():
             # Combine the current query with the conversation history for context
             combined_query = f"{' '.join([exchange['question'] for exchange in st.session_state.conversation_memory])} {user_input}"
 
-            relevant_texts, relevant_docs = query_vector_db(
+            relevant_texts, relevant_docs = HW4_vectorDB(
                 st.session_state.collection, combined_query)
             context = "\n".join(relevant_texts)
 
