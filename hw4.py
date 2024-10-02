@@ -1,6 +1,7 @@
 import sys
 import streamlit as st
 from openai import OpenAI
+from anthropic import Anthropic
 import google.generativeai as genai
 from bs4 import BeautifulSoup
 import os
@@ -9,7 +10,7 @@ import tempfile
 from collections import deque
 
 # Workaround for sqlite3 issue in Streamlit Cloud
-__import__('pysqlite3')
+_import_('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import chromadb
@@ -18,19 +19,22 @@ import chromadb
 
 def ensure_openai_client():
     if 'openai_client' not in st.session_state:
-        api_key = st.secrets["openai"]
+        api_key = st.secrets["openai_api_key"]
         st.session_state.openai_client = OpenAI(api_key=api_key)
 
 # Function to ensure the Anthropic client is initialize
 
-
+def ensure_anthropic_client():
+    if 'anthropic_client' not in st.session_state:
+        api_key = st.secrets["claude_api_key"]
+        st.session_state.anthropic_client = Anthropic(api_key=api_key)
 
 # Function to ensure the Google AI client is initialized
 
 
 def ensure_google_ai_client():
     if 'google_ai_client' not in st.session_state:
-        api_key = st.secrets["gemini"]
+        api_key = st.secrets["gemini_api_key"]
         genai.configure(api_key=api_key)
         st.session_state.google_ai_client = genai
 
@@ -151,7 +155,25 @@ def get_chatbot_response(query, context, conversation_memory, model):
             st.error(f"Error getting GPT-4 response: {str(e)}")
             return None
 
-    
+    elif model == "Anthropic Claude":
+        ensure_anthropic_client()
+        messages = [
+            {"role": "user", "content": f"Here's some context information: {context}\n\nConversation history:\n{condensed_history}"},
+            {"role": "assistant", "content": "I understand. I'll use this context and conversation history to answer questions consistently. What would you like to know?"},
+            {"role": "user", "content": query}
+        ]
+        try:
+            response = st.session_state.anthropic_client.messages.create(
+                model="claude-3-opus-20240229",
+                system=system_message,
+                messages=messages,
+                max_tokens=1024,
+                stream=True
+            )
+            return response
+        except Exception as e:
+            st.error(f"Error getting Claude response: {str(e)}")
+            return None
 
     elif model == "Google Gemini":
         ensure_google_ai_client()
@@ -183,7 +205,7 @@ def main():
         "Choose an LLM:", ("OpenAI GPT-4", "Anthropic Claude", "Google Gemini"))
 
     # Page content
-    st.title("HW 4")
+    st.title("HW 4 - iSchool Chatbot")
 
     # Check if the system is ready, if not, prepare it
     if not st.session_state.system_ready:
@@ -230,9 +252,9 @@ def main():
                         if chunk.choices[0].delta.content is not None:
                             full_response += chunk.choices[0].delta.content
                             response_placeholder.markdown(full_response + "▌")
-                # if selected_model == "Anthropic Claude":
-                #     for chunk in response_stream:
-                #         chunk_type = getattr(chunk, 'type', None)
+                if selected_model == "Anthropic Claude":
+                    for chunk in response_stream:
+                        chunk_type = getattr(chunk, 'type', None)
 
                         if chunk_type == 'content_block_start':
                             continue  # Skip the start message
@@ -286,5 +308,5 @@ def main():
             "Failed to create or load the document collection. Please check the zip file and try again.")
 
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     main()
