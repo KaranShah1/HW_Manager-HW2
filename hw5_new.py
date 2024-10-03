@@ -221,7 +221,7 @@ def main():
             
             
             
-            stream = openai_client.chat.completions.create(
+            stream = st.session_state.openai_client.chat.completions.create(
                         model='gpt-4o',
                         messages=msgs,
                         stream=True
