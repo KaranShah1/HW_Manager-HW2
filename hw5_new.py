@@ -213,10 +213,12 @@ def main():
         if user_input:
             with st.chat_message("user"):
                 st.markdown(user_input)
-            relevant_texts, relevant_docs = get_relevant_info(user_input, selected_model)    
+            relevant_texts, relevant_docs = get_relevant_info(user_input, selected_model) 
+            msg = {"role": "user", "content": user_input}
             msgs=[]
             msgs.append({"role": "system", "content": f"Relevant information: \n {relevant_texts}"})
             msgs.append(msg)
+            
             
             
             stream = openai_client.chat.completions.create(
