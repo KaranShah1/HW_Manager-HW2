@@ -117,7 +117,7 @@ def get_relevant_info(query, model):
         st.write(relevant_texts)
         st.write(relevant_texts[0])
         st.write(relevant_texts[1])
-        st.write(relevant_texts[2])
+        st.write("\n".join(relevant_texts))
         return "\n".join(relevant_texts), relevant_docs
     except Exception as e:
         st.error(f"Error querying the database: {str(e)}")
