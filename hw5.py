@@ -1,78 +1,262 @@
+import sys
 import streamlit as st
-import openai
-import requests
+from openai import OpenAI
+import google.generativeai as genai
+from bs4 import BeautifulSoup
+import os
+import zipfile
+import tempfile
+from collections import deque
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 
-# Ensure 'scikit-learn' is installed using pip:
-# pip install scikit-learn
+# Workaround for sqlite3 issue in Streamlit Cloud
+__import__('pysqlite3')
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
-# Set API Keys from Streamlit secrets
-openai.api_key = st.secrets["openai"]
+import chromadb
 
-# Placeholder for your vector embeddings (for courses or clubs)
-course_info = {
-    "Data Science": "Data Science is a multidisciplinary field focused on extracting knowledge from data sets, which are typically large.",
-    "Machine Learning": "Machine Learning is a field of AI that uses statistical techniques to give computer systems the ability to 'learn' from data.",
-    "Software Engineering": "Software Engineering is the application of engineering principles to the development of software."
-}
+# Function to ensure the OpenAI client is initialized
+def ensure_openai_client():
+    if 'openai_client' not in st.session_state:
+        api_key = st.secrets["openai"]
+        st.session_state.openai_client = OpenAI(api_key=api_key)
 
-# Pre-defined vectors (example) for the course info
-course_embeddings = {
-    "Data Science": np.array([0.5, 0.2, 0.1]),
-    "Machine Learning": np.array([0.8, 0.3, 0.5]),
-    "Software Engineering": np.array([0.1, 0.7, 0.6])
-}
 
-def vector_search(query):
-    """Takes in a query and returns the most relevant course info based on vector similarity."""
-    # Simulate query embedding (you would use OpenAI's API to get this in practice)
-    query_embedding = np.array([0.6, 0.3, 0.2])  # Just an example embedding
+
+# Function to ensure the Google AI client is initialized
+def ensure_google_ai_client():
+    if 'google_ai_client' not in st.session_state:
+        api_key = st.secrets["gemini"]
+        genai.configure(api_key=api_key)
+        st.session_state.google_ai_client = genai
+
+# Function to extract HTML files from zip
+def extract_html_from_zip(zip_path):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        html_files = {}
+        for root, dirs, files in os.walk(temp_dir):
+            for file in files:
+                if file.endswith('.html'):
+                    file_path = os.path.join(root, file)
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        html_files[file] = f.read()
+    return html_files
+
+# Function to create the ChromaDB collection
+def create_hw4_collection():
+    if 'HW_URL_Collection' not in st.session_state:
+        persist_directory = os.path.join(os.getcwd(), "chroma_db")
+        client = chromadb.PersistentClient(path=persist_directory)
+        collection = client.get_or_create_collection("HW_URL_Collection")
+
+        zip_path = os.path.join(os.getcwd(), "su_orgs.zip")
+        if not os.path.exists(zip_path):
+            st.error(f"Zip file not found: {zip_path}")
+            return None
+
+        html_files = extract_html_from_zip(zip_path)
+
+        if collection.count() == 0:
+            with st.spinner("Processing content and preparing the system..."):
+                ensure_openai_client()
+
+                for filename, content in html_files.items():
+                    try:
+                        soup = BeautifulSoup(content, 'html.parser')
+                        text = soup.get_text(separator=' ', strip=True)
+
+                        response = st.session_state.openai_client.embeddings.create(
+                            input=text, model="text-embedding-3-small"
+                        )
+                        embedding = response.data[0].embedding
+
+                        collection.add(
+                            documents=[text],
+                            metadatas=[{"filename": filename}],
+                            ids=[filename],
+                            embeddings=[embedding]
+                        )
+                    except Exception as e:
+                        st.error(f"Error processing {filename}: {str(e)}")
+        else:
+            st.info("Using existing vector database.")
+
+        st.session_state.HW_URL_Collection = collection
+
+    return st.session_state.HW_URL_Collection
+
+#Start
+# Function to get relevant club info based on the query
+def get_relevant_info(query, model):
+    collection = st.session_state.HW_URL_Collection
     
-    # Compute cosine similarity between query and stored course embeddings
-    similarities = {}
-    for course, embedding in course_embeddings.items():
-        similarities[course] = cosine_similarity([query_embedding], [embedding])[0][0]
-    
-    # Get the course with the highest similarity score
-    most_relevant_course = max(similarities, key=similarities.get)
-    
-    return course_info[most_relevant_course], most_relevant_course
+    # Always use OpenAI for embeddings, regardless of the selected model
+    ensure_openai_client()
+    try:
+        response = st.session_state.openai_client.embeddings.create(
+            input=query, model="text-embedding-3-small"
+        )
+        query_embedding = response.data[0].embedding
+    except Exception as e:
+        st.error(f"Error creating OpenAI embedding: {str(e)}")
+        return "", []
 
-def get_llm_response(course_info, course_name):
-    """Invoke the LLM with the course information from the vector search."""
-    prompt = (f"I am a student asking about {course_name}. "
-              f"The information I have is: {course_info}. "
-              f"Can you summarize this information and give me additional insights?")
+    # Normalize the embedding
+    query_embedding = np.array(query_embedding) / np.linalg.norm(query_embedding)
+
+    try:
+        results = collection.query(
+            query_embeddings=[query_embedding.tolist()],
+            n_results=3
+        )
+        relevant_texts = results['documents'][0]
+        relevant_docs = [result['filename'] for result in results['metadatas'][0]]
+
     
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # Ensure you're using the correct model
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that provides information on courses and clubs."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=150
-    )
-    
-    return response['choices'][0]['message']['content'].strip()  # Updated way to access response content
+        return "\n".join(relevant_texts), relevant_docs
+    except Exception as e:
+        st.error(f"Error querying the database: {str(e)}")
+        return "", []
 
-# Streamlit UI
-st.title("Short-Term Memory Chatbot")
+# Function to get chatbot response using the selected LLM
+def get_chatbot_response(query, context, conversation_memory, model):
+    system_message = "You are an AI assistant with knowledge from specific documents. Use the provided context to answer the user's questions. If the information is not in the context, say you don't know based on the available information. Maintain consistency with your previous answers."
 
-# Get user input
-user_query = st.text_input("Ask about a course (e.g., 'Tell me about Machine Learning'):")
+    condensed_history = "\n".join(
+        [f"Human: {exchange['question']}\nAI: {exchange['answer']}" for exchange in conversation_memory])
 
-if st.button("Get Information"):
-    if user_query:
-        # Perform vector search to get the relevant course info
-        relevant_info, relevant_course = vector_search(user_query)
-        
-        # Call LLM with the results of vector search
-        llm_response = get_llm_response(relevant_info, relevant_course)
-        
-        # Display results in the app
-        st.write(f"Relevant course: {relevant_course}")
-        st.write(f"Course Information: {relevant_info}")
-        st.write(f"LLM Response: {llm_response}")
+    if model == "OpenAI GPT-4":
+        ensure_openai_client()
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": f"Context: {context}\n\nConversation history:\n{condensed_history}\n\nQuestion: {query}"}
+        ]
+        try:
+            response = st.session_state.openai_client.chat.completions.create(
+                model="gpt-4",
+                messages=messages,
+                stream=True
+            )
+            return response
+        except Exception as e:
+            st.error(f"Error getting GPT-4 response: {str(e)}")
+            return None
+
+    elif model == "Anthropic Claude":
+        ensure_anthropic_client()
+        messages = [
+            {"role": "user", "content": f"Here's some context information: {context}\n\nConversation history:\n{condensed_history}"},
+            {"role": "assistant", "content": "I understand. I'll use this context and conversation history to answer questions consistently. What would you like to know?"},
+            {"role": "user", "content": query}
+        ]
+        try:
+            response = st.session_state.anthropic_client.messages.create(
+                model="claude-3-opus-20240229",
+                system=system_message,
+                messages=messages,
+                max_tokens=1024,
+                stream=True
+            )
+            return response
+        except Exception as e:
+            st.error(f"Error getting Claude response: {str(e)}")
+            return None
+
+    elif model == "Google Gemini":
+        ensure_google_ai_client()
+        prompt = f"{system_message}\n\nContext: {context}\n\nConversation history:\n{condensed_history}\n\nHuman: {query}\nAI:"
+        try:
+            model = st.session_state.google_ai_client.GenerativeModel('gemini-1.0-pro')
+            response = model.generate_content(prompt, stream=True)
+            return response
+        except Exception as e:
+            st.error(f"Error getting Gemini response: {str(e)}")
+        return None
+
+def main():
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+    if 'conversation_memory' not in st.session_state:
+        st.session_state.conversation_memory = deque(maxlen=5)
+    if 'system_ready' not in st.session_state:
+        st.session_state.system_ready = False
+    if 'collection' not in st.session_state:
+        st.session_state.collection = None
+
+    st.sidebar.title("Model Selection")
+    selected_model = st.sidebar.radio(
+        "Choose an LLM:", ("OpenAI GPT-4", "Anthropic Claude", "Google Gemini"))
+
+    st.title("iSchool Chatbot")
+
+    if not st.session_state.system_ready:
+        with st.spinner("Processing documents and preparing the system..."):
+            st.session_state.collection = create_hw4_collection()
+            if st.session_state.collection:
+                st.session_state.system_ready = True
+                st.success("AI ChatBot is Ready!")
+            else:
+                st.error("Failed to create or load the document collection. Please check the zip file and try again.")
+
+    if st.session_state.system_ready and st.session_state.collection:
+        st.subheader(f"Chat with the AI Assistant (Using {selected_model})")
+
+        for message in st.session_state.chat_history:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        user_input = st.chat_input("Ask a question about the documents:")
+
+        if user_input:
+            with st.chat_message("user"):
+                st.markdown(user_input)
+            relevant_texts, relevant_docs = get_relevant_info(user_input, selected_model) 
+            msg = {"role": "user", "content": user_input}
+            msgs=[]
+            msgs.append({"role": "system", "content": f"Relevant information: \n {relevant_texts}"})
+            msgs.append(msg)
+            
+            
+            
+            stream = st.session_state.openai_client.chat.completions.create(
+                        model='gpt-4o',
+                        messages=msgs,
+                        stream=True
+                    )
+            # response_stream = get_chatbot_response(
+            #     user_input, relevant_texts, st.session_state.conversation_memory, selected_model)
+
+            with st.chat_message("assistant"):
+                response_placeholder = st.empty()
+                full_response = ""
+                if selected_model == "OpenAI GPT-4":
+                    for chunk in stream:
+                        if chunk.choices[0].delta.content is not None:
+                            full_response += chunk.choices[0].delta.content
+                            response_placeholder.markdown(full_response + "▌")
+               
+
+            st.session_state.chat_history.append(
+                {"role": "user", "content": user_input})
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": full_response})
+
+            st.session_state.conversation_memory.append({
+                "question": user_input,
+                "answer": full_response
+            })
+
+            with st.expander("Relevant documents used"):
+                for doc in relevant_docs:
+                    st.write(f"- {doc}")
+
+    elif not st.session_state.system_ready:
+        st.info("The system is still preparing. Please wait...")
     else:
-        st.write("Please enter a query.")
+        st.error("Failed to create or load the document collection. Please check the zip file and try again.")
+
+if __name__ == "__main__":
+    main()
