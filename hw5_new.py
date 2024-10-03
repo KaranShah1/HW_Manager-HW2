@@ -213,38 +213,29 @@ def main():
         if user_input:
             with st.chat_message("user"):
                 st.markdown(user_input)
-
-            relevant_texts, relevant_docs = get_relevant_info(user_input, selected_model)
-
-            response_stream = get_chatbot_response(
-                user_input, relevant_texts, st.session_state.conversation_memory, selected_model)
+            relevant_texts, relevant_docs = get_relevant_info(user_input, selected_model)    
+            msgs=[]
+            msgs.append({"role": "system", "content": f"Relevant information: \n {relevant_texts}"})
+            msgs.append(msg)
+            
+            
+            stream = openai_client.chat.completions.create(
+                        model='gpt-4o',
+                        messages=msgs,
+                        stream=True
+                    )
+            # response_stream = get_chatbot_response(
+            #     user_input, relevant_texts, st.session_state.conversation_memory, selected_model)
 
             with st.chat_message("assistant"):
                 response_placeholder = st.empty()
                 full_response = ""
                 if selected_model == "OpenAI GPT-4":
-                    for chunk in response_stream:
+                    for chunk in stream:
                         if chunk.choices[0].delta.content is not None:
                             full_response += chunk.choices[0].delta.content
                             response_placeholder.markdown(full_response + "▌")
-                elif selected_model == "Anthropic Claude":
-                    for chunk in response_stream:
-                        chunk_type = getattr(chunk, 'type', None)
-                        if chunk_type == 'content_block_delta':
-                            if hasattr(chunk, 'delta') and hasattr(chunk.delta, 'text'):
-                                full_response += chunk.delta.text
-                                response_placeholder.markdown(full_response + "▌")
-                        elif chunk_type == 'message_delta':
-                            if hasattr(chunk, 'delta') and hasattr(chunk.delta, 'content'):
-                                for content_block in chunk.delta.content:
-                                    if content_block.type == 'text':
-                                        full_response += content_block.text
-                                        response_placeholder.markdown(full_response + "▌")
-                elif selected_model == "Google Gemini":
-                    for chunk in response_stream:
-                        full_response += chunk.text
-                        response_placeholder.markdown(full_response + "▌")
-                response_placeholder.markdown(full_response)
+               
 
             st.session_state.chat_history.append(
                 {"role": "user", "content": user_input})
