@@ -145,37 +145,7 @@ def get_chatbot_response(query, context, conversation_memory, model):
             st.error(f"Error getting GPT-4 response: {str(e)}")
             return None
 
-    # elif model == "Anthropic Claude":
-    #     ensure_anthropic_client()
-    #     messages = [
-    #         {"role": "user", "content": f"Here's some context information: {context}\n\nConversation history:\n{condensed_history}"},
-    #         {"role": "assistant", "content": "I understand. I'll use this context and conversation history to answer questions consistently. What would you like to know?"},
-    #         {"role": "user", "content": query}
-    #     ]
-    #     try:
-    #         response = st.session_state.anthropic_client.messages.create(
-    #             model="claude-3-opus-20240229",
-    #             system=system_message,
-    #             messages=messages,
-    #             max_tokens=1024,
-    #             stream=True
-    #         )
-    #         return response
-    #     except Exception as e:
-    #         st.error(f"Error getting Claude response: {str(e)}")
-    #         return None
-
-    # elif model == "Google Gemini":
-    #     ensure_google_ai_client()
-    #     prompt = f"{system_message}\n\nContext: {context}\n\nConversation history:\n{condensed_history}\n\nHuman: {query}\nAI:"
-    #     try:
-    #         model = st.session_state.google_ai_client.GenerativeModel('gemini-1.0-pro')
-    #         response = model.generate_content(prompt, stream=True)
-    #         return response
-    #     except Exception as e:
-    #         st.error(f"Error getting Gemini response: {str(e)}")
-    #     return None
-
+   
 def main():
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
