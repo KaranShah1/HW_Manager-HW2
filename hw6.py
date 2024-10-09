@@ -26,7 +26,7 @@ def create_news_collection():
         ensure_openai_client()
 
         # Define the path to the CSV file
-        csv_file = os.path.join(os.getcwd(), "news_data.csv")
+        csv_file = os.path.join(os.getcwd(), "News_Data.csv")
         if not os.path.exists(csv_file):
             st.error(f"CSV file not found: {csv_file}")
             return None
