@@ -31,7 +31,7 @@ def setup_news_collection():
         collection = client.get_or_create_collection("news_vector_collection")
 
         # Specify path to CSV file containing news data
-        csv_file = os.path.join(os.getcwd(), "Example_news_info_for_testing.csv")
+        csv_file = os.path.join(os.getcwd(), "test_news_data.csv")
         if not os.path.exists(csv_file):
             st.error(f"CSV file not found: {csv_file}")
             return None
