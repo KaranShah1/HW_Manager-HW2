@@ -26,7 +26,7 @@ def create_news_collection():
         client = chromadb.PersistentClient(path=persist_directory)
         collection = client.get_or_create_collection("News_Collection")
 
-        csv_path = os.path.join(os.getcwd(), "Example_news_info_for_testing (2).csv")
+        csv_path = os.path.join(os.getcwd(), "Example_news_info_for_testing.csv")
         if not os.path.exists(csv_path):
             st.error(f"CSV file not found: {csv_path}")
             return None
