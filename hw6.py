@@ -14,7 +14,7 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import chromadb
 
 
-def ensure_openai_client():
+def initialize_openai_client():
     # Check if the OpenAI client has been initialized, if not, initialize it using API key from secrets
     if 'openai_client' not in st.session_state:
         api_key = st.secrets["openai"]
@@ -42,7 +42,7 @@ def create_news_collection():
           # If collection is empty, process and add data
         if collection.count() == 0:
             with st.spinner("Processing content and preparing the system..."):
-                ensure_openai_client()
+                initialize_openai_client()
 
                 df = pd.read_csv(csv_path)
                 for index, row in df.iterrows():
@@ -82,7 +82,7 @@ def get_relevant_info(query):
     # Get the news collection from session state
     collection = st.session_state.News_Collection
 
-    ensure_openai_client()
+    initialize_openai_client()
     try:
         response = st.session_state.openai_client.embeddings.create(
             input=query, model="text-embedding-3-small"
@@ -111,7 +111,7 @@ def get_relevant_info(query):
 
 # Function to call the OpenAI LLM (large language model) and manage its response
 def call_llm(model, messages, temp, query, tools=None):
-    ensure_openai_client()
+    initialize_openai_client()
     try:
         # Make a streaming call to OpenAI's chat model with given parameters
         response = st.session_state.openai_client.chat.completions.create(
