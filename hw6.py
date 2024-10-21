@@ -178,12 +178,13 @@ def generate_chatbot_response(query, context, conversation_memory):
 
     Always prioritize using the context for general inquiries about news or types of news.
 
-    When asked to find the most interesting news, consider the following factors:
-    1. Relevance to legal matters
-    2. Global impact
-    3. Potential implications for businesses
-    4. Novelty or uniqueness of the story
-    5. Recency of the news (more recent news is generally more interesting)
+    When identifying the most compelling news, consider these factors:
+
+    Recency: More recent news is generally more relevant.
+    Global impact: The extent to which the news affects people or industries worldwide.
+    Business implications: How the news could influence companies, markets, or the economy.
+    Legal relevance: How closely the news ties to legal issues.
+    Novelty: How new or unique the news is.
 
     Provide a ranked list of news items with brief explanations of why they are interesting for a global law firm. Include the company name and date for each news item."""
 
