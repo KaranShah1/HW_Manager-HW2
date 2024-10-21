@@ -241,11 +241,20 @@ def main():
     if 'collection' not in st.session_state:
         st.session_state.collection = None
 
-    st.title("My AI News Bot")
+    st.title("My AI News Bot -  Karan Shah")
     st.write("""
     This AI assistant helps global law firms stay updated on the latest legal news.
     Ask about specific company news, legal disputes, or business trends worldwide.
     """)
+    # Sidebar for displaying news topics
+    with st.sidebar:
+        st.header("Available News Topics")
+        st.write("""
+        - Corporate mergers
+        - Intellectual property disputes
+        - Regulatory changes
+        - Legal cases
+        """)
 
     if not st.session_state.system_ready:
         with st.spinner("Processing news articles and preparing the system..."):
