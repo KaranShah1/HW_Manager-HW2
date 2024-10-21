@@ -167,7 +167,7 @@ def call_llm(model, messages, temp, query, tools=None):
 
     return full_response, tool_usage_info
 
-def get_chatbot_response(query, context, conversation_memory):
+def generate_chatbot_response(query, context, conversation_memory):
     system_message = """You are an AI assistant specialized in providing information about news stories for a large global law firm. 
     Your primary source of information is the context provided, which contains relevant data extracted from embeddings of news articles.
 
@@ -284,7 +284,7 @@ def main():
                 f"Debug: Relevant texts found: {len(relevant_texts)} characters")
 
             with st.chat_message("assistant"):
-                response, tool_usage_info = get_chatbot_response(
+                response, tool_usage_info = generate_chatbot_response(
                     user_input, relevant_texts, st.session_state.conversation_memory)
 
                 if response is None:
