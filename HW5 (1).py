@@ -19,7 +19,7 @@ import chromadb
 
 def ensure_openai_client():
     if 'openai_client' not in st.session_state:
-        api_key = st.secrets["openai_api_key"]
+        api_key = st.secrets["openai"]
         st.session_state.openai_client = OpenAI(api_key=api_key)
 
 # Function to extract HTML files from zip
