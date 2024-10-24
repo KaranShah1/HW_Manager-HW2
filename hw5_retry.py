@@ -43,7 +43,7 @@ def generate_collection():
         client = chromadb.PersistentClient(path=persist_directory)
         collection = client.get_or_create_collection("URL_Collection")
 
-        zip_file_path = os.path.join(os.getcwd(), "university_orgs.zip")
+        zip_file_path = os.path.join(os.getcwd(), "su_orgs.zip")
         if not os.path.exists(zip_file_path):
             st.error(f"Zip file not found: {zip_file_path}")
             return None
