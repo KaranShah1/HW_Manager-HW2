@@ -43,7 +43,7 @@ def generate_chroma_collection():
         client = chromadb.PersistentClient(path=storage_directory)
         vector_collection = client.get_or_create_collection("document_vector_collection")
 
-        zip_archive_path = os.path.join(os.getcwd(), "su_documents.zip")
+        zip_archive_path = os.path.join(os.getcwd(), "su_orgs.zip")
         if not os.path.exists(zip_archive_path):
             st.error(f"Zip file not found: {zip_archive_path}")
             return None
