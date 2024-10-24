@@ -10,7 +10,7 @@ import numpy as np
 import json
 
 # Workaround for sqlite3 issue in Streamlit Cloud
-_import_('pysqlite3')
+__import__('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import chromadb
@@ -296,5 +296,5 @@ def main():
             "Failed to create or load the document collection. Please check the zip file and try again.")
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
