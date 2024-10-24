@@ -50,11 +50,6 @@ elif selected_page == "Fifth Homework":
     # Execute the hw5.py code
     exec(open("hw5.py").read())
 
-elif selected_page == "trialll":
-    st.title("HW - 5")
-    # Execute the hw5.py code
-    exec(open("HW5 (1).py").read())
-
 elif selected_page == "Fifth Homework Retry":
     st.title("HW - 5")
     # Execute the hw5.py code
