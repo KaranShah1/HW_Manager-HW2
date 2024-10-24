@@ -10,7 +10,7 @@ import numpy as np
 import json
 
 # Workaround for sqlite3 issue in Streamlit Cloud
-__import__('pysqlite3')
+_import_('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import chromadb
@@ -19,7 +19,7 @@ import chromadb
 
 def ensure_openai_client():
     if 'openai_client' not in st.session_state:
-        api_key = st.secrets["openai"]
+        api_key = st.secrets["openai_api_key"]
         st.session_state.openai_client = OpenAI(api_key=api_key)
 
 # Function to extract HTML files from zip
@@ -42,7 +42,7 @@ def extract_html_from_zip(zip_path):
 # Function to create the ChromaDB collection
 
 
-def create_collection():
+def create_hw4_collection():
     if 'HW_URL_Collection' not in st.session_state:
         persist_directory = os.path.join(os.getcwd(), "chroma_db")
         client = chromadb.PersistentClient(path=persist_directory)
@@ -119,7 +119,7 @@ def get_relevant_info(query):
 
 
 
-def interact_with_llm(model, messages, temp, query,  tools=None):
+def call_llm(model, messages, temp, query,  tools=None):
     ensure_openai_client()
     try:
         response = st.session_state.openai_client.chat.completions.create(
@@ -149,7 +149,7 @@ def interact_with_llm(model, messages, temp, query,  tools=None):
                                 extra_info = get_relevant_info(query)
                                 tool_usage_info = f"Tool used: {tool_called}"
                                 update_system_prompt(messages, extra_info)
-                                recursive_response, recursive_tool_info = interact_with_llm(
+                                recursive_response, recursive_tool_info = call_llm(
                                     model, messages, temp, tools)
                                 full_response += recursive_response
                                 tool_usage_info += "\n" + recursive_tool_info
@@ -170,36 +170,14 @@ def interact_with_llm(model, messages, temp, query,  tools=None):
 
 def get_chatbot_response(query, context, conversation_memory):
     system_message = """You are an AI assistant specialized in providing information about student organizations and clubs at Syracuse University. 
-    Your primary source of information combines:
-    1. Context from vector embeddings of club descriptions and details
-    2. Information from newly uploaded files
-    3. Conversation history for handling follow-up questions
+    Your primary source of information is the context provided, which contains relevant data extracted from embeddings of club descriptions and details.
 
-    When processing queries, follow these rules:
+    Only use the get_club_info tool when:
 
-    1. Use the get_club_info tool ONLY when:
-        a) A specific club name is mentioned in the user's query, OR
-        b) A follow-up question references a specific club from any previous response in the chat history
-           - Search the conversation history to find the referenced club name
-           - Pass the found club name as an argument
+    a) A specific club name is mentioned in the user's query, OR
+    b) If the user asks a follow-up question about a specific club mentioned in a previous response and this could be at any point in the chat, then find the club name from the previous response and pass it as an argument.
 
-    2. For general inquiries about clubs or types of clubs:
-        a) Prioritize using the provided context
-        b) Incorporate relevant information from uploaded files
-        c) Reference previous conversation context when applicable
-
-    3. When handling follow-up questions:
-        a) Review conversation history to maintain context
-        b) Resolve ambiguous references using previous exchanges
-        c) Combine historical context with new search results
-
-    4. For unclear or ambiguous queries:
-        a) Ask for clarification
-        b) Reference relevant parts of conversation history
-        c) Suggest possible interpretations based on context
-
-    Always maintain conversation context to provide coherent and relevant responses across multiple exchanges.
-    Give response in list format when giving the list of clubs."""
+    Always prioritize using the context for general inquiries about clubs or types of clubs."""
 
     # Create a condensed conversation history
     condensed_history = "\n".join(
@@ -232,7 +210,7 @@ def get_chatbot_response(query, context, conversation_memory):
     ]
 
     try:
-        response, tool_usage_info = interact_with_llm(
+        response, tool_usage_info = call_llm(
             "gpt-4o", messages, 0.7, query, tools)
         return response, tool_usage_info
     except Exception as e:
@@ -261,7 +239,7 @@ def main():
 
     if not st.session_state.system_ready:
         with st.spinner("Processing documents and preparing the system..."):
-            st.session_state.collection = create_collection()
+            st.session_state.collection = create_hw4_collection()
             if st.session_state.collection:
                 st.session_state.system_ready = True
                 st.success("AI ChatBot is Ready!")
@@ -270,13 +248,13 @@ def main():
                     "Failed to create or load the document collection. Please check the zip file and try again.")
 
     if st.session_state.system_ready and st.session_state.collection:
-        st.subheader("Chat with the Assistant")
+        st.subheader("Chat with the AI Assistant (Using OpenAI GPT-4)")
 
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        user_input = st.chat_input("Ask a question about information at Syracuse University:")
+        user_input = st.chat_input("Ask a question about the documents:")
 
         if user_input:
             with st.chat_message("user"):
@@ -318,5 +296,5 @@ def main():
             "Failed to create or load the document collection. Please check the zip file and try again.")
 
 
-# if __name__ == "__main__":
-main()
+if _name_ == "_main_":
+    main()
