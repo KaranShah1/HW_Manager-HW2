@@ -47,7 +47,7 @@ def create_new_collection():
         collection = client.get_or_create_collection("Vector_Club_Collection")
 
         # Path to the zip file containing the HTML documents
-        zip_path = os.path.join(os.getcwd(), "student_orgs.zip")
+        zip_path = os.path.join(os.getcwd(), "su_orgs.zip")
         if not os.path.exists(zip_path):  # Check if the zip file exists
             st.error(f"Zip file not found: {zip_path}")  # Display an error if the file is missing
             return None  # Exit if the file is not found
