@@ -15,57 +15,62 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import chromadb
 
-# Ensure the OpenAI client is initialized
-def initialize_openai():
-    if 'ai_client' not in st.session_state:
-        api_key = st.secrets["openai"]
-        st.session_state.ai_client = OpenAI(api_key=api_key)
+# Function to ensure the OpenAI client is initialized
 
-# Extract HTML files from the zip archive
-def unzip_html_files(zip_path):
+def ensure_openai_client():
+    if 'openai_client' not in st.session_state:
+        api_key = st.secrets["openai"]
+        st.session_state.openai_client = OpenAI(api_key=api_key)
+
+# Function to extract HTML files from zip
+
+
+def extract_html_from_zip(zip_path):
     with tempfile.TemporaryDirectory() as temp_dir:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(temp_dir)
 
-        html_data = {}
+        html_files = {}
         for root, dirs, files in os.walk(temp_dir):
             for file in files:
                 if file.endswith('.html'):
                     file_path = os.path.join(root, file)
                     with open(file_path, 'r', encoding='utf-8') as f:
-                        html_data[file] = f.read()
-    return html_data
+                        html_files[file] = f.read()
+    return html_files
 
-# Create a ChromaDB collection for storing embeddings
-def generate_collection():
-    if 'url_collection' not in st.session_state:
-        persist_directory = os.path.join(os.getcwd(), "chroma_storage")
+# Function to create the ChromaDB collection
+
+
+def create_hw4_collection():
+    if 'HW_URL_Collection' not in st.session_state:
+        persist_directory = os.path.join(os.getcwd(), "chroma_db")
         client = chromadb.PersistentClient(path=persist_directory)
-        collection = client.get_or_create_collection("URL_Collection")
+        collection = client.get_or_create_collection("HW_URL_Collection")
 
-        zip_file_path = os.path.join(os.getcwd(), "su_orgs.zip")
-        if not os.path.exists(zip_file_path):
-            st.error(f"Zip file not found: {zip_file_path}")
+        zip_path = os.path.join(os.getcwd(), "su_orgs.zip")
+        if not os.path.exists(zip_path):
+            st.error(f"Zip file not found: {zip_path}")
             return None
 
-        html_files = unzip_html_files(zip_file_path)
+        html_files = extract_html_from_zip(zip_path)
 
         if collection.count() == 0:
-            with st.spinner("Extracting content and preparing embeddings..."):
-                initialize_openai()
+            with st.spinner("Processing content and preparing the system..."):
+                ensure_openai_client()
 
                 for filename, content in html_files.items():
                     try:
                         soup = BeautifulSoup(content, 'html.parser')
-                        text_content = soup.get_text(separator=' ', strip=True)
+                        text = soup.get_text(separator=' ', strip=True)
 
-                        response = st.session_state.ai_client.embeddings.create(
-                            input=text_content, model="text-embedding-ada-002"
+                        response = st.session_state.openai_client.embeddings.create(
+                            input=text, model="text-embedding-3-small"
                         )
                         embedding = response.data[0].embedding
 
                         collection.add(
-                            documents=[text_content],
+                            documents=[text],
                             metadatas=[{"filename": filename}],
                             ids=[filename],
                             embeddings=[embedding]
@@ -73,46 +78,51 @@ def generate_collection():
                     except Exception as e:
                         st.error(f"Error processing {filename}: {str(e)}")
         else:
-            st.info("Using existing vector collection.")
+            st.info("Using existing vector database.")
 
-        st.session_state.url_collection = collection
+        st.session_state.HW_URL_Collection = collection
 
-    return st.session_state.url_collection
+    return st.session_state.HW_URL_Collection
 
-# Fetch relevant club information from the collection
-def fetch_club_info(query):
-    collection = st.session_state.url_collection
+# Function to get relevant club info based on the query
 
-    initialize_openai()
+
+def get_relevant_info(query):
+    collection = st.session_state.HW_URL_Collection
+
+    ensure_openai_client()
     try:
-        response = st.session_state.ai_client.embeddings.create(
-            input=query, model="text-embedding-ada-002"
+        response = st.session_state.openai_client.embeddings.create(
+            input=query, model="text-embedding-3-small"
         )
-        query_vector = response.data[0].embedding
+        query_embedding = response.data[0].embedding
     except Exception as e:
-        st.error(f"Error creating AI embedding: {str(e)}")
+        st.error(f"Error creating OpenAI embedding: {str(e)}")
         return "", []
 
-    # Normalize the embedding vector
-    query_vector = np.array(query_vector) / np.linalg.norm(query_vector)
+    # Normalize the embedding
+    query_embedding = np.array(query_embedding) / \
+        np.linalg.norm(query_embedding)
 
     try:
         results = collection.query(
-            query_embeddings=[query_vector.tolist()],
+            query_embeddings=[query_embedding.tolist()],
             n_results=3
         )
         relevant_texts = results['documents'][0]
-        doc_files = [result['filename'] for result in results['metadatas'][0]]
-        return "\n".join(relevant_texts), doc_files
+        relevant_docs = [result['filename']
+                         for result in results['metadatas'][0]]
+        return "\n".join(relevant_texts), relevant_docs
     except Exception as e:
-        st.error(f"Error querying collection: {str(e)}")
+        st.error(f"Error querying the database: {str(e)}")
         return "", []
 
-# Call the LLM model for chat response generation
-def generate_llm_response(model, messages, temp, query, tools=None):
-    initialize_openai()
+
+
+def call_llm(model, messages, temp, query,  tools=None):
+    ensure_openai_client()
     try:
-        response = st.session_state.ai_client.chat.completions.create(
+        response = st.session_state.openai_client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=temp,
@@ -121,12 +131,12 @@ def generate_llm_response(model, messages, temp, query, tools=None):
             stream=True
         )
     except Exception as e:
-        st.error(f"Error in API call: {str(e)}")
-        return "", "Error occurred."
+        st.error(f"Error calling OpenAI API: {str(e)}")
+        return "", "Error occurred while generating response."
 
-    full_text = ""
     tool_called = None
-    tool_info = ""
+    full_response = ""
+    tool_usage_info = ""
 
     try:
         while True:
@@ -135,76 +145,130 @@ def generate_llm_response(model, messages, temp, query, tools=None):
                     for tool_call in chunk.choices[0].delta.tool_calls:
                         if tool_call.function:
                             tool_called = tool_call.function.name
-                            if tool_called == "fetch_club_info":
-                                extra_info = fetch_club_info(query)
-                                tool_info = f"Tool used: {tool_called}"
-                                update_prompt(messages, extra_info)
-                                recursive_response, recursive_tool_info = generate_llm_response(
+                            if tool_called == "get_club_info":
+                                extra_info = get_relevant_info(query)
+                                tool_usage_info = f"Tool used: {tool_called}"
+                                update_system_prompt(messages, extra_info)
+                                recursive_response, recursive_tool_info = call_llm(
                                     model, messages, temp, tools)
-                                full_text += recursive_response
-                                tool_info += "\n" + recursive_tool_info
-                                return full_text, tool_info
+                                full_response += recursive_response
+                                tool_usage_info += "\n" + recursive_tool_info
+                                return full_response, tool_usage_info
                 elif hasattr(chunk.choices[0].delta, 'content') and chunk.choices[0].delta.content:
-                    full_text += chunk.choices[0].delta.content
+                    full_response += chunk.choices[0].delta.content
             break
     except Exception as e:
-        st.error(f"Error streaming response: {str(e)}")
+        st.error(f"Error in streaming response: {str(e)}")
 
     if tool_called:
-        tool_info = f"Tool used: {tool_called}"
+        tool_usage_info = f"Tool used: {tool_called}"
     else:
-        tool_info = "No tools used."
+        tool_usage_info = "No tools were used in generating this response."
 
-    return full_text, tool_info
+    return full_response, tool_usage_info
 
-# Update the system message prompt with additional information
-def update_prompt(messages, extra_info):
+
+def get_chatbot_response(query, context, conversation_memory):
+    system_message = """You are an AI assistant specialized in providing information about student organizations and clubs at Syracuse University. 
+    Your primary source of information is the context provided, which contains relevant data extracted from embeddings of club descriptions and details.
+
+    Only use the get_club_info tool when:
+
+    a) A specific club name is mentioned in the user's query, OR
+    b) If the user asks a follow-up question about a specific club mentioned in a previous response and this could be at any point in the chat, then find the club name from the previous response and pass it as an argument.
+
+    Always prioritize using the context for general inquiries about clubs or types of clubs."""
+
+    # Create a condensed conversation history
+    condensed_history = "\n".join(
+        [f"Human: {exchange['question']}\nAI: {exchange['answer']}" for exchange in conversation_memory]
+    )
+
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": f"Context: {context}\n\nConversation history:\n{condensed_history}\n\nQuestion: {query}"}
+    ]
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_club_info",
+                "description": "Get information about a specific club or organization",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "club_name": {
+                            "type": "string",
+                            "description": "The name of the club or organization to look up"
+                        }
+                    },
+                    "required": ["club_name"]
+                }
+            }
+        }
+    ]
+
+    try:
+        response, tool_usage_info = call_llm(
+            "gpt-4o", messages, 0.7, query, tools)
+        return response, tool_usage_info
+    except Exception as e:
+        st.error(f"Error getting GPT-4 response: {str(e)}")
+        return None, "Error occurred while generating response."
+
+
+def update_system_prompt(messages, extra_info):
     for message in messages:
         if message["role"] == "system":
-            message["content"] += f"\n\nAdditional data: {extra_info}"
+            message["content"] += f"\n\nAdditional information: {extra_info}"
             break
 
-# Main chat system for querying documents
-def main_chat_system():
+
+def main():
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
-    if 'memory_queue' not in st.session_state:
-        st.session_state.memory_queue = deque(maxlen=5)
-    if 'system_initialized' not in st.session_state:
-        st.session_state.system_initialized = False
+    if 'conversation_memory' not in st.session_state:
+        st.session_state.conversation_memory = deque(maxlen=5)
+    if 'system_ready' not in st.session_state:
+        st.session_state.system_ready = False
+    if 'collection' not in st.session_state:
+        st.session_state.collection = None
 
-    st.title("University Org Chatbot")
+    st.title("iSchool Chatbot")
 
-    if not st.session_state.system_initialized:
-        with st.spinner("Processing and setting up..."):
-            st.session_state.url_collection = generate_collection()
-            if st.session_state.url_collection:
-                st.session_state.system_initialized = True
-                st.success("Chatbot is ready!")
+    if not st.session_state.system_ready:
+        with st.spinner("Processing documents and preparing the system..."):
+            st.session_state.collection = create_hw4_collection()
+            if st.session_state.collection:
+                st.session_state.system_ready = True
+                st.success("AI ChatBot is Ready!")
             else:
-                st.error("Failed to initialize system. Check the zip file.")
+                st.error(
+                    "Failed to create or load the document collection. Please check the zip file and try again.")
 
-    if st.session_state.system_initialized and st.session_state.url_collection:
-        st.subheader("Chat with the AI Assistant (GPT-4 Powered)")
+    if st.session_state.system_ready and st.session_state.collection:
+        st.subheader("Chat with the AI Assistant (Using OpenAI GPT-4)")
 
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        user_input = st.chat_input("Ask a question:")
+        user_input = st.chat_input("Ask a question about the documents:")
 
         if user_input:
             with st.chat_message("user"):
                 st.markdown(user_input)
 
-            relevant_texts, doc_files = fetch_club_info(user_input)
-            st.write(f"Debug: {len(relevant_texts)} characters found.")
+            relevant_texts, relevant_docs = get_relevant_info(user_input)
+            st.write(
+                f"Debug: Relevant texts found: {len(relevant_texts)} characters")
 
-            response, tool_usage_info = generate_llm_response(
-                "gpt-4", user_input, 0.7, relevant_texts)
+            response, tool_usage_info = get_chatbot_response(
+                user_input, relevant_texts, st.session_state.conversation_memory)
 
             if response is None:
-                st.error("Failed to get a response from the AI.")
+                st.error("Failed to get a response from the AI. Please try again.")
                 return
 
             with st.chat_message("assistant"):
@@ -216,17 +280,20 @@ def main_chat_system():
             st.session_state.chat_history.append(
                 {"role": "assistant", "content": response})
 
-            st.session_state.memory_queue.append({
+            st.session_state.conversation_memory.append({
                 "question": user_input,
                 "answer": response
             })
 
-            with st.expander("Documents referenced"):
-                for doc in doc_files:
+            with st.expander("Relevant documents used"):
+                for doc in relevant_docs:
                     st.write(f"- {doc}")
 
-    elif not st.session_state.system_initialized:
-        st.info("The system is setting up. Please wait...")
+    elif not st.session_state.system_ready:
+        st.info("The system is still preparing. Please wait...")
+    else:
+        st.error(
+            "Failed to create or load the document collection. Please check the zip file and try again.")
+
 
 if __name__ == "__main__":
-    main_chat_system()
