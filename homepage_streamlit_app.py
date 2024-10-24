@@ -8,7 +8,7 @@ st.set_page_config(page_title="Multi-Page App", layout="wide")
 with st.sidebar:
     selected_page = option_menu(
         "HW Manager",
-        ["First Homework", "Second Homework", "Third Homework", "Third Homework Retry", "Fourth Homework", "Fourth Homework Retry", "Fifth Homework","trialll","Fifth Homework Retry", "Sixth Homework"],
+        ["First Homework", "Second Homework", "Third Homework", "Third Homework Retry", "Fourth Homework", "Fourth Homework Retry", "Fifth Homework","Fifth Homework Retry", "Sixth Homework"],
         icons=['book', 'book', 'book', 'book', 'book','book','book','book','book'],
         menu_icon="cast", 
         default_index=0,
